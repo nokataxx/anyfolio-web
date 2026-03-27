@@ -130,6 +130,11 @@
   }
 }
 
+body.grabbing,
+body.grabbing * {
+  cursor: grabbing !important;
+}
+
 /* Markdown prose styles */
 .prose {
   color: var(--foreground);

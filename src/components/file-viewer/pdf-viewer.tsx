@@ -79,7 +79,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
         scrollX: scrollParent.scrollLeft,
         scrollY: scrollParent.scrollTop,
       }
-      container.style.cursor = "grabbing"
+      document.body.classList.add("grabbing")
       e.preventDefault()
     }
 
@@ -96,7 +96,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
     const onMouseUp = (e: MouseEvent) => {
       if (e.button !== 2 || !panState.current.active) return
       panState.current.active = false
-      container.style.cursor = ""
+      document.body.classList.remove("grabbing")
     }
 
     const onContextMenu = (e: MouseEvent) => {
@@ -109,6 +109,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
     container.addEventListener("contextmenu", onContextMenu)
 
     return () => {
+      document.body.classList.remove("grabbing")
       container.removeEventListener("mousedown", onMouseDown)
       window.removeEventListener("mousemove", onMouseMove)
       window.removeEventListener("mouseup", onMouseUp)
