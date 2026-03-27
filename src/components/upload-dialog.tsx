@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -56,6 +57,9 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
+          <DialogDescription>
+            Upload .md, .pdf, or .xlsx files to the selected folder.
+          </DialogDescription>
         </DialogHeader>
         <div
           className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${

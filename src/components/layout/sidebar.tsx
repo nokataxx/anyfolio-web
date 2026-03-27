@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -101,7 +102,10 @@ function FileItem({
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <span className="truncate flex-1">{file.name}</span>
+        <span className="truncate flex-1">
+          {file.name.replace(/\.[^.]+$/, "")}
+          <span className="text-muted-foreground/60">{file.name.match(/\.[^.]+$/)?.[0]}</span>
+        </span>
       )}
       {!editing && (
         <>
@@ -315,6 +319,9 @@ export function Sidebar(props: SidebarProps) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New Folder</DialogTitle>
+              <DialogDescription>
+                Create a new folder to organize your files.
+              </DialogDescription>
             </DialogHeader>
             <form
               onSubmit={(e) => {

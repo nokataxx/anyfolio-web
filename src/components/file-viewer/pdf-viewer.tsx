@@ -42,6 +42,32 @@ export function PdfViewer({ file }: PdfViewerProps) {
     const container = containerRef.current
     if (!container) return
 
+    const onWheel = (e: WheelEvent) => {
+      if (!e.altKey) return
+      const rect = container.getBoundingClientRect()
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) return
+      e.preventDefault()
+      e.stopPropagation()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      setScale((s) => Math.min(3, Math.max(0.5, s + delta)))
+    }
+
+    document.addEventListener("wheel", onWheel, { passive: false })
+
+    return () => {
+      document.removeEventListener("wheel", onWheel)
+    }
+  }, [pdfUrl])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 2) return
       const scrollParent = getScrollParent()
@@ -88,7 +114,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
       window.removeEventListener("mouseup", onMouseUp)
       container.removeEventListener("contextmenu", onContextMenu)
     }
-  }, [getScrollParent])
+  }, [getScrollParent, pdfUrl])
 
   useEffect(() => {
     let cancelled = false
@@ -137,7 +163,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
   }
 
   return (
-    <div ref={containerRef} className="inline-flex min-w-full flex-col items-center">
+    <div ref={containerRef} className="inline-flex min-h-full min-w-full flex-col items-center">
       <div className="sticky top-0 z-10 flex w-full items-center justify-center gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur">
         <Button
           variant="outline"
