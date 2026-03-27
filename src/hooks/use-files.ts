@@ -46,9 +46,9 @@ export function useFiles(folderId: string | null) {
     if (!user) return { error: "Not authenticated" }
 
     const ext = file.name.split(".").pop()?.toLowerCase()
-    const fileType = ext === "xls" ? "xlsx" : ext
-    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx") {
-      return { error: "Only .md, .pdf, and .xlsx/.xls files are supported" }
+    const fileType = ext === "xls" ? "xlsx" : ext === "ppt" ? "pptx" : ext
+    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx" && fileType !== "pptx") {
+      return { error: "Only .md, .pdf, .xlsx/.xls, and .pptx/.ppt files are supported" }
     }
 
     const storagePath = `${user.id}/${folderId}/${crypto.randomUUID()}.${ext}`
@@ -63,7 +63,7 @@ export function useFiles(folderId: string | null) {
       user_id: user.id,
       folder_id: folderId,
       name: file.name,
-      type: fileType as "md" | "pdf" | "xlsx",
+      type: fileType as "md" | "pdf" | "xlsx" | "pptx",
       storage_path: storagePath,
     })
 

@@ -58,7 +58,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
-            Upload .md, .pdf, or .xlsx files to the selected folder.
+            Upload .md, .pdf, .xlsx, or .pptx files to the selected folder.
           </DialogDescription>
         </DialogHeader>
         <div
@@ -82,7 +82,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
         >
           <Upload className="mb-2 size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Drag & drop .md, .pdf, or .xlsx files here
+            Drag & drop .md, .pdf, .xlsx, or .pptx files here
           </p>
           <p className="mb-4 text-xs text-muted-foreground">or</p>
           <Button
@@ -93,7 +93,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
               const input = document.createElement("input")
               input.type = "file"
               input.multiple = true
-              input.accept = ".md,.pdf,.xlsx,.xls"
+              input.accept = ".md,.pdf,.xlsx,.xls,.pptx,.ppt"
               input.onchange = () => {
                 if (input.files?.length) {
                   handleFiles(input.files)

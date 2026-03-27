@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { MarkdownViewer } from "@/components/file-viewer/markdown-viewer"
 import { PdfViewer } from "@/components/file-viewer/pdf-viewer"
 import { ExcelViewer } from "@/components/file-viewer/excel-viewer"
+import { PptxViewer } from "@/components/file-viewer/pptx-viewer"
 import { UploadDialog } from "@/components/upload-dialog"
 import { Button } from "@/components/ui/button"
 import { useFolders } from "@/hooks/use-folders"
@@ -95,6 +96,8 @@ export function DashboardPage() {
                 <MarkdownViewer file={selectedFile} />
               ) : selectedFile.type === "xlsx" ? (
                 <ExcelViewer file={selectedFile} />
+              ) : selectedFile.type === "pptx" ? (
+                <PptxViewer file={selectedFile} />
               ) : (
                 <PdfViewer file={selectedFile} />
               )

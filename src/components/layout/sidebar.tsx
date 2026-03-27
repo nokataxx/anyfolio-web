@@ -7,6 +7,7 @@ import {
   FileText,
   FileType,
   FileSpreadsheet,
+  Presentation,
   Pencil,
   Trash2,
 } from "lucide-react"
@@ -21,6 +22,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import type { Folder as FolderType, FileRecord } from "@/lib/types"
 
 type SidebarProps = {
@@ -82,6 +94,8 @@ function FileItem({
         <FileText className="size-4 shrink-0 text-muted-foreground" />
       ) : file.type === "xlsx" ? (
         <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
+      ) : file.type === "pptx" ? (
+        <Presentation className="size-4 shrink-0 text-muted-foreground" />
       ) : (
         <FileType className="size-4 shrink-0 text-muted-foreground" />
       )}
@@ -110,7 +124,7 @@ function FileItem({
       {!editing && (
         <>
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation()
               setEditName(file.name)
@@ -119,15 +133,33 @@ function FileItem({
           >
             <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
           </button>
-          <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDeleteFile(file)
-            }}
-          >
-            <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete File</AlertDialogTitle>
+                <AlertDialogDescription>
+                  &quot;{file.name}&quot; を削除しますか？この操作は取り消せません。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => onDeleteFile(file)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </div>
@@ -226,7 +258,7 @@ function FolderTree({
               {!isEditing && (
                 <>
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation()
                       setEditFolderName(folder.name)
@@ -235,15 +267,33 @@ function FolderTree({
                   >
                     <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
                   </button>
-                  <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDeleteFolder(folder.id)
-                    }}
-                  >
-                    <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-                  </button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Folder</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          &quot;{folder.name}&quot; を削除しますか？フォルダ内のファイルもすべて削除されます。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => onDeleteFolder(folder.id)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )}
             </div>
