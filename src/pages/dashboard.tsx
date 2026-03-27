@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
 import { MarkdownViewer } from "@/components/file-viewer/markdown-viewer"
 import { PdfViewer } from "@/components/file-viewer/pdf-viewer"
+import { ExcelViewer } from "@/components/file-viewer/excel-viewer"
 import { UploadDialog } from "@/components/upload-dialog"
 import { Button } from "@/components/ui/button"
 import { useFolders } from "@/hooks/use-folders"
@@ -33,8 +34,8 @@ export function DashboardPage() {
     contentRef.current?.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const { folders, createFolder, deleteFolder } = useFolders()
-  const { files, uploadFile, deleteFile } = useFiles(selectedFolderId)
+  const { folders, createFolder, deleteFolder, renameFolder } = useFolders()
+  const { files, uploadFile, deleteFile, renameFile } = useFiles(selectedFolderId)
 
   const handleSelectFolder = (id: string | null) => {
     setSelectedFolderId(id)
@@ -52,6 +53,14 @@ export function DashboardPage() {
     return await deleteFile(file)
   }
 
+  const handleRenameFile = async (file: FileRecord, newName: string) => {
+    const result = await renameFile(file, newName)
+    if (!result?.error && selectedFile?.id === file.id) {
+      setSelectedFile({ ...file, name: newName.trim() })
+    }
+    return result
+  }
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <Header />
@@ -65,13 +74,15 @@ export function DashboardPage() {
           onSelectFile={handleSelectFile}
           onCreateFolder={createFolder}
           onDeleteFolder={deleteFolder}
+          onRenameFolder={renameFolder}
           onDeleteFile={handleDeleteFile}
+          onRenameFile={handleRenameFile}
         />
         <main className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex items-center gap-2 border-b px-4 py-2">
+          <div className="flex h-10 items-center gap-2 border-b px-4">
             <span className="flex-1 text-sm text-muted-foreground">
               {selectedFile
-                ? selectedFile.name
+                ? selectedFile.name.replace(/\.[^.]+$/, "")
                 : selectedFolderId
                   ? "Select a file to view"
                   : "Select a folder"}
@@ -82,6 +93,8 @@ export function DashboardPage() {
             {selectedFile ? (
               selectedFile.type === "md" ? (
                 <MarkdownViewer file={selectedFile} />
+              ) : selectedFile.type === "xlsx" ? (
+                <ExcelViewer file={selectedFile} />
               ) : (
                 <PdfViewer file={selectedFile} />
               )

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Document, Page, pdfjs } from "react-pdf"
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,73 @@ export function PdfViewer({ file }: PdfViewerProps) {
   const [pageNumber, setPageNumber] = useState(1)
   const [scale, setScale] = useState(1.2)
   const [error, setError] = useState<string | null>(null)
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const panState = useRef<{ active: boolean; startX: number; startY: number; scrollX: number; scrollY: number }>({
+    active: false, startX: 0, startY: 0, scrollX: 0, scrollY: 0,
+  })
+
+  const getScrollParent = useCallback((): HTMLElement | null => {
+    let el = containerRef.current?.parentElement ?? null
+    while (el) {
+      const { overflow, overflowX, overflowY } = getComputedStyle(el)
+      if ([overflow, overflowX, overflowY].some((v) => v === "auto" || v === "scroll")) return el
+      el = el.parentElement
+    }
+    return null
+  }, [])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 2) return
+      const scrollParent = getScrollParent()
+      if (!scrollParent) return
+      panState.current = {
+        active: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        scrollX: scrollParent.scrollLeft,
+        scrollY: scrollParent.scrollTop,
+      }
+      container.style.cursor = "grabbing"
+      e.preventDefault()
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!panState.current.active) return
+      const scrollParent = getScrollParent()
+      if (!scrollParent) return
+      const dx = e.clientX - panState.current.startX
+      const dy = e.clientY - panState.current.startY
+      scrollParent.scrollLeft = panState.current.scrollX - dx
+      scrollParent.scrollTop = panState.current.scrollY - dy
+    }
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button !== 2 || !panState.current.active) return
+      panState.current.active = false
+      container.style.cursor = ""
+    }
+
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+    }
+
+    container.addEventListener("mousedown", onMouseDown)
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+    container.addEventListener("contextmenu", onContextMenu)
+
+    return () => {
+      container.removeEventListener("mousedown", onMouseDown)
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+      container.removeEventListener("contextmenu", onContextMenu)
+    }
+  }, [getScrollParent])
 
   useEffect(() => {
     let cancelled = false
@@ -70,8 +137,8 @@ export function PdfViewer({ file }: PdfViewerProps) {
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur">
+    <div ref={containerRef} className="inline-flex min-w-full flex-col items-center">
+      <div className="sticky top-0 z-10 flex w-full items-center justify-center gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur">
         <Button
           variant="outline"
           size="icon-sm"

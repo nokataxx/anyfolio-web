@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ChevronRight,
   ChevronDown,
@@ -6,6 +6,8 @@ import {
   FolderPlus,
   FileText,
   FileType,
+  FileSpreadsheet,
+  Pencil,
   Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,7 +31,103 @@ type SidebarProps = {
   onSelectFile: (file: FileRecord) => void
   onCreateFolder: (name: string, parentId: string | null) => Promise<{ error: string | null } | undefined>
   onDeleteFolder: (id: string) => Promise<{ error: string | null } | undefined>
+  onRenameFolder: (id: string, newName: string) => Promise<{ error: string | null } | undefined>
   onDeleteFile: (file: FileRecord) => Promise<{ error: string | null } | undefined>
+  onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
+}
+
+function FileItem({
+  file,
+  depth,
+  isSelected,
+  onSelectFile,
+  onDeleteFile,
+  onRenameFile,
+}: {
+  file: FileRecord
+  depth: number
+  isSelected: boolean
+  onSelectFile: (file: FileRecord) => void
+  onDeleteFile: (file: FileRecord) => Promise<{ error: string | null } | undefined>
+  onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(file.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [editing])
+
+  const handleRenameSubmit = async () => {
+    if (editName.trim() && editName.trim() !== file.name) {
+      await onRenameFile(file, editName.trim())
+    }
+    setEditing(false)
+  }
+
+  return (
+    <div
+      className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
+        isSelected ? "bg-muted font-medium" : ""
+      }`}
+      style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      onClick={() => !editing && onSelectFile(file)}
+    >
+      {file.type === "md" ? (
+        <FileText className="size-4 shrink-0 text-muted-foreground" />
+      ) : file.type === "xlsx" ? (
+        <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
+      ) : (
+        <FileType className="size-4 shrink-0 text-muted-foreground" />
+      )}
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="flex-1 min-w-0 bg-transparent border border-border rounded px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onBlur={handleRenameSubmit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleRenameSubmit()
+            if (e.key === "Escape") {
+              setEditName(file.name)
+              setEditing(false)
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <span className="truncate flex-1">{file.name}</span>
+      )}
+      {!editing && (
+        <>
+          <button
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              setEditName(file.name)
+              setEditing(true)
+            }}
+          >
+            <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+          </button>
+          <button
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeleteFile(file)
+            }}
+          >
+            <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+          </button>
+        </>
+      )}
+    </div>
+  )
 }
 
 function FolderTree({
@@ -42,10 +140,29 @@ function FolderTree({
   onSelectFile,
   onCreateFolder,
   onDeleteFolder,
+  onRenameFolder,
   onDeleteFile,
+  onRenameFile,
   depth = 0,
 }: SidebarProps & { parentId: string | null; depth?: number }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
+  const [editFolderName, setEditFolderName] = useState("")
+  const folderInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editingFolderId) {
+      folderInputRef.current?.focus()
+      folderInputRef.current?.select()
+    }
+  }, [editingFolderId])
+
+  const handleFolderRenameSubmit = async (folderId: string, originalName: string) => {
+    if (editFolderName.trim() && editFolderName.trim() !== originalName) {
+      await onRenameFolder(folderId, editFolderName.trim())
+    }
+    setEditingFolderId(null)
+  }
 
   const children = folders.filter((f) => f.parent_id === parentId)
 
@@ -63,6 +180,7 @@ function FolderTree({
       {children.map((folder) => {
         const isExpanded = expanded[folder.id] ?? false
         const isSelected = selectedFolderId === folder.id
+        const isEditing = editingFolderId === folder.id
         const childFiles = files.filter((f) => f.folder_id === folder.id)
 
         return (
@@ -73,8 +191,10 @@ function FolderTree({
               }`}
               style={{ paddingLeft: `${depth * 16 + 8}px` }}
               onClick={() => {
-                onSelectFolder(folder.id)
-                setExpanded((prev) => ({ ...prev, [folder.id]: !prev[folder.id] }))
+                if (!isEditing) {
+                  onSelectFolder(folder.id)
+                  setExpanded((prev) => ({ ...prev, [folder.id]: !prev[folder.id] }))
+                }
               }}
             >
               {isExpanded ? (
@@ -83,44 +203,58 @@ function FolderTree({
                 <ChevronRight className="size-3.5 shrink-0" />
               )}
               <Folder className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate flex-1">{folder.name}</span>
-              <button
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDeleteFolder(folder.id)
-                }}
-              >
-                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-              </button>
+              {isEditing ? (
+                <input
+                  ref={folderInputRef}
+                  className="flex-1 min-w-0 bg-transparent border border-border rounded px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+                  value={editFolderName}
+                  onChange={(e) => setEditFolderName(e.target.value)}
+                  onBlur={() => handleFolderRenameSubmit(folder.id, folder.name)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleFolderRenameSubmit(folder.id, folder.name)
+                    if (e.key === "Escape") setEditingFolderId(null)
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="truncate flex-1">{folder.name}</span>
+              )}
+              {!isEditing && (
+                <>
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditFolderName(folder.name)
+                      setEditingFolderId(folder.id)
+                    }}
+                  >
+                    <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+                  </button>
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDeleteFolder(folder.id)
+                    }}
+                  >
+                    <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </>
+              )}
             </div>
             {isExpanded && (
               <>
                 {childFiles.map((file) => (
-                  <div
+                  <FileItem
                     key={file.id}
-                    className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
-                      selectedFileId === file.id ? "bg-muted font-medium" : ""
-                    }`}
-                    style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
-                    onClick={() => onSelectFile(file)}
-                  >
-                    {file.type === "md" ? (
-                      <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <FileType className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="truncate flex-1">{file.name}</span>
-                    <button
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDeleteFile(file)
-                      }}
-                    >
-                      <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-                    </button>
-                  </div>
+                    file={file}
+                    depth={depth + 1}
+                    isSelected={selectedFileId === file.id}
+                    onSelectFile={onSelectFile}
+                    onDeleteFile={onDeleteFile}
+                    onRenameFile={onRenameFile}
+                  />
                 ))}
                 <FolderTree
                   folders={folders}
@@ -132,7 +266,9 @@ function FolderTree({
                   onSelectFile={onSelectFile}
                   onCreateFolder={onCreateFolder}
                   onDeleteFolder={onDeleteFolder}
+                  onRenameFolder={onRenameFolder}
                   onDeleteFile={onDeleteFile}
+                  onRenameFile={onRenameFile}
                   depth={depth + 1}
                 />
               </>
@@ -141,21 +277,15 @@ function FolderTree({
         )
       })}
       {depth === 0 && folderFiles.length > 0 && folderFiles.map((file) => (
-        <div
+        <FileItem
           key={file.id}
-          className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
-            selectedFileId === file.id ? "bg-muted font-medium" : ""
-          }`}
-          style={{ paddingLeft: "8px" }}
-          onClick={() => onSelectFile(file)}
-        >
-          {file.type === "md" ? (
-            <FileText className="size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <FileType className="size-4 shrink-0 text-muted-foreground" />
-          )}
-          <span className="truncate flex-1">{file.name}</span>
-        </div>
+          file={file}
+          depth={0}
+          isSelected={selectedFileId === file.id}
+          onSelectFile={onSelectFile}
+          onDeleteFile={onDeleteFile}
+          onRenameFile={onRenameFile}
+        />
       ))}
     </>
   )
@@ -174,7 +304,7 @@ export function Sidebar(props: SidebarProps) {
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
-      <div className="flex items-center justify-between border-b px-3 py-2">
+      <div className="flex h-10 items-center justify-between border-b px-3">
         <span className="text-sm font-medium">Folders</span>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

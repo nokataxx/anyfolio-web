@@ -46,8 +46,9 @@ export function useFiles(folderId: string | null) {
     if (!user) return { error: "Not authenticated" }
 
     const ext = file.name.split(".").pop()?.toLowerCase()
-    if (ext !== "md" && ext !== "pdf") {
-      return { error: "Only .md and .pdf files are supported" }
+    const fileType = ext === "xls" ? "xlsx" : ext
+    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx") {
+      return { error: "Only .md, .pdf, and .xlsx/.xls files are supported" }
     }
 
     const storagePath = `${user.id}/${folderId}/${crypto.randomUUID()}.${ext}`
@@ -62,7 +63,7 @@ export function useFiles(folderId: string | null) {
       user_id: user.id,
       folder_id: folderId,
       name: file.name,
-      type: ext as "md" | "pdf",
+      type: fileType as "md" | "pdf" | "xlsx",
       storage_path: storagePath,
     })
 
@@ -90,5 +91,20 @@ export function useFiles(folderId: string | null) {
     return { error: null }
   }
 
-  return { files, loading, uploadFile, deleteFile, refetch: fetchFiles }
+  const renameFile = async (fileRecord: FileRecord, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed) return { error: "Name cannot be empty" }
+
+    const { error: dbError } = await supabase
+      .from("anyfolio_files")
+      .update({ name: trimmed })
+      .eq("id", fileRecord.id)
+
+    if (dbError) return { error: dbError.message }
+
+    await fetchFiles()
+    return { error: null }
+  }
+
+  return { files, loading, uploadFile, deleteFile, renameFile, refetch: fetchFiles }
 }

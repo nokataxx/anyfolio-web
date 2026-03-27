@@ -59,5 +59,20 @@ export function useFolders() {
     return { error: error?.message ?? null }
   }
 
-  return { folders, loading, createFolder, deleteFolder, refetch: fetchFolders }
+  const renameFolder = async (id: string, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed) return { error: "Name cannot be empty" }
+
+    const { error } = await supabase
+      .from("anyfolio_folders")
+      .update({ name: trimmed })
+      .eq("id", id)
+
+    if (!error) {
+      await fetchFolders()
+    }
+    return { error: error?.message ?? null }
+  }
+
+  return { folders, loading, createFolder, deleteFolder, renameFolder, refetch: fetchFolders }
 }
