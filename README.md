@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# anyfolio-web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> 自分のナレッジを、どのデバイスからでも美しく閲覧できるWebアプリケーション
 
-Currently, two official plugins are available:
+Obsidian や Google Drive で管理している Markdown ファイルや PDF を、スマホや外出先の PC からでも認証された安全な環境で美しく閲覧できる Web アプリです。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Tech Stack
 
-## React Compiler
+| Role | Technology |
+|------|-----------|
+| Framework | React 19 + Vite 8 |
+| Language | TypeScript 5.9 (strict) |
+| Styling | Tailwind CSS 4 |
+| UI Components | shadcn (Radix UI) |
+| Auth / DB / Storage | Supabase |
+| Markdown Rendering | react-markdown |
+| PDF Viewer | react-pdf |
+| Deployment | Vercel |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the ESLint configuration
+```bash
+# Install dependencies
+npm install
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start dev server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Supabase の接続情報を `.env` に設定してください。
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server with HMR |
+| `npm run build` | TypeScript check + Vite production build |
+| `npm run lint` | Run ESLint |
+| `npm run preview` | Preview production build locally |
+
+## Features
+
+### Phase 1 (Current)
+
+- Email + password authentication (Supabase Auth)
+- Folder management (create, delete, nested structure)
+- File upload (drag & drop, bulk upload)
+- Markdown rendering (headings, lists, code blocks, etc.)
+- PDF viewer (page navigation, zoom)
+
+### Phase 2
+
+- WikiLink support (`[[link]]` for inter-file navigation)
+- File name search
+- Full-text search
+- Google Drive integration
+- Additional file format support
+
+## Related Repositories
+
+| Repository | Description |
+|-----------|-------------|
+| `nokataxx/anyfolio-web` | React + Vite Web app (this repo) |
+| `nokataxx/anyfolio-app` | Expo (React Native) mobile app |
+
+## License
+
+Private
