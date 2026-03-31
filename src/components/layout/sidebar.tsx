@@ -10,6 +10,8 @@ import {
   Presentation,
   Pencil,
   Trash2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +35,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { Folder as FolderType, FileRecord } from "@/lib/types"
 
 type SidebarProps = {
@@ -49,10 +57,18 @@ type SidebarProps = {
   onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
 }
 
+function fileIcon(type: string) {
+  if (type === "md") return <FileText className="size-4 shrink-0 text-muted-foreground" />
+  if (type === "xlsx") return <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
+  if (type === "pptx") return <Presentation className="size-4 shrink-0 text-muted-foreground" />
+  return <FileType className="size-4 shrink-0 text-muted-foreground" />
+}
+
 function FileItem({
   file,
   depth,
   isSelected,
+  compact,
   onSelectFile,
   onDeleteFile,
   onRenameFile,
@@ -60,6 +76,7 @@ function FileItem({
   file: FileRecord
   depth: number
   isSelected: boolean
+  compact: boolean
   onSelectFile: (file: FileRecord) => void
   onDeleteFile: (file: FileRecord) => Promise<{ error: string | null } | undefined>
   onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
@@ -82,88 +99,95 @@ function FileItem({
     setEditing(false)
   }
 
-  return (
+  const item = (
     <div
       className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
         isSelected ? "bg-muted font-medium" : ""
-      }`}
-      style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      } ${compact ? "justify-center px-0" : ""}`}
+      style={compact ? undefined : { paddingLeft: `${depth * 16 + 8}px` }}
       onClick={() => !editing && onSelectFile(file)}
     >
-      {file.type === "md" ? (
-        <FileText className="size-4 shrink-0 text-muted-foreground" />
-      ) : file.type === "xlsx" ? (
-        <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
-      ) : file.type === "pptx" ? (
-        <Presentation className="size-4 shrink-0 text-muted-foreground" />
-      ) : (
-        <FileType className="size-4 shrink-0 text-muted-foreground" />
-      )}
-      {editing ? (
-        <input
-          ref={inputRef}
-          className="flex-1 min-w-0 bg-transparent border border-border rounded px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          onBlur={handleRenameSubmit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleRenameSubmit()
-            if (e.key === "Escape") {
-              setEditName(file.name)
-              setEditing(false)
-            }
-          }}
-          onClick={(e) => e.stopPropagation()}
-        />
-      ) : (
-        <span className="truncate flex-1">
-          {file.name.replace(/\.[^.]+$/, "")}
-          <span className="text-muted-foreground/60">{file.name.match(/\.[^.]+$/)?.[0]}</span>
-        </span>
-      )}
-      {!editing && (
+      {fileIcon(file.type)}
+      {!compact && (
         <>
-          <button
-            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditName(file.name)
-              setEditing(true)
-            }}
-          >
-            <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
-          </button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+          {editing ? (
+            <input
+              ref={inputRef}
+              className="flex-1 min-w-0 bg-transparent border border-border rounded px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onBlur={handleRenameSubmit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRenameSubmit()
+                if (e.key === "Escape") {
+                  setEditName(file.name)
+                  setEditing(false)
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className="truncate flex-1">
+              {file.name.replace(/\.[^.]+$/, "")}
+              <span className="text-muted-foreground/60">{file.name.match(/\.[^.]+$/)?.[0]}</span>
+            </span>
+          )}
+          {!editing && (
+            <>
               <button
                 className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditName(file.name)
+                  setEditing(true)
+                }}
               >
-                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
               </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete File</AlertDialogTitle>
-                <AlertDialogDescription>
-                  &quot;{file.name}&quot; を削除しますか？この操作は取り消せません。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => onDeleteFile(file)}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete File</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      &quot;{file.name}&quot; を削除しますか？この操作は取り消せません。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => onDeleteFile(file)}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
         </>
       )}
     </div>
   )
+
+  if (compact) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipContent side="right">{file.name}</TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return item
 }
 
 function FolderTree({
@@ -172,6 +196,7 @@ function FolderTree({
   parentId,
   selectedFolderId,
   selectedFileId,
+  compact,
   onSelectFolder,
   onSelectFile,
   onCreateFolder,
@@ -180,7 +205,7 @@ function FolderTree({
   onDeleteFile,
   onRenameFile,
   depth = 0,
-}: SidebarProps & { parentId: string | null; depth?: number }) {
+}: SidebarProps & { parentId: string | null; compact: boolean; depth?: number }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
   const [editFolderName, setEditFolderName] = useState("")
@@ -219,84 +244,101 @@ function FolderTree({
         const isEditing = editingFolderId === folder.id
         const childFiles = files.filter((f) => f.folder_id === folder.id)
 
-        return (
-          <div key={folder.id}>
-            <div
-              className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
-                isSelected ? "bg-muted font-medium" : ""
-              }`}
-              style={{ paddingLeft: `${depth * 16 + 8}px` }}
-              onClick={() => {
-                if (!isEditing) {
-                  onSelectFolder(folder.id)
-                  setExpanded((prev) => ({ ...prev, [folder.id]: !prev[folder.id] }))
-                }
-              }}
-            >
-              {isExpanded ? (
+        const folderItem = (
+          <div
+            className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
+              isSelected ? "bg-muted font-medium" : ""
+            } ${compact ? "justify-center px-0" : ""}`}
+            style={compact ? undefined : { paddingLeft: `${depth * 16 + 8}px` }}
+            onClick={() => {
+              if (!isEditing) {
+                onSelectFolder(folder.id)
+                setExpanded((prev) => ({ ...prev, [folder.id]: !prev[folder.id] }))
+              }
+            }}
+          >
+            {!compact && (
+              isExpanded ? (
                 <ChevronDown className="size-3.5 shrink-0" />
               ) : (
                 <ChevronRight className="size-3.5 shrink-0" />
-              )}
-              <Folder className="size-4 shrink-0 text-muted-foreground" />
-              {isEditing ? (
-                <input
-                  ref={folderInputRef}
-                  className="flex-1 min-w-0 bg-transparent border border-border rounded px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
-                  value={editFolderName}
-                  onChange={(e) => setEditFolderName(e.target.value)}
-                  onBlur={() => handleFolderRenameSubmit(folder.id, folder.name)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleFolderRenameSubmit(folder.id, folder.name)
-                    if (e.key === "Escape") setEditingFolderId(null)
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="truncate flex-1">{folder.name}</span>
-              )}
-              {!isEditing && (
-                <>
-                  <button
-                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditFolderName(folder.name)
-                      setEditingFolderId(folder.id)
+              )
+            )}
+            <Folder className="size-4 shrink-0 text-muted-foreground" />
+            {!compact && (
+              <>
+                {isEditing ? (
+                  <input
+                    ref={folderInputRef}
+                    className="flex-1 min-w-0 bg-transparent border border-border rounded px-1 text-sm outline-none focus:ring-1 focus:ring-ring"
+                    value={editFolderName}
+                    onChange={(e) => setEditFolderName(e.target.value)}
+                    onBlur={() => handleFolderRenameSubmit(folder.id, folder.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleFolderRenameSubmit(folder.id, folder.name)
+                      if (e.key === "Escape") setEditingFolderId(null)
                     }}
-                  >
-                    <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
-                  </button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Folder</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          &quot;{folder.name}&quot; を削除しますか？フォルダ内のファイルもすべて削除されます。
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={() => onDeleteFolder(folder.id)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <span className="truncate flex-1">{folder.name}</span>
+                )}
+                {!isEditing && (
+                  <>
+                    <button
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditFolderName(folder.name)
+                        setEditingFolderId(folder.id)
+                      }}
+                    >
+                      <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+                    </button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              )}
-            </div>
+                          <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Folder</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            &quot;{folder.name}&quot; を削除しますか？フォルダ内のファイルもすべて削除されます。
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => onDeleteFolder(folder.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )
+
+        return (
+          <div key={folder.id}>
+            {compact ? (
+              <Tooltip>
+                <TooltipTrigger asChild>{folderItem}</TooltipTrigger>
+                <TooltipContent side="right">{folder.name}</TooltipContent>
+              </Tooltip>
+            ) : (
+              folderItem
+            )}
             {isExpanded && (
               <>
                 {childFiles.map((file) => (
@@ -305,6 +347,7 @@ function FolderTree({
                     file={file}
                     depth={depth + 1}
                     isSelected={selectedFileId === file.id}
+                    compact={compact}
                     onSelectFile={onSelectFile}
                     onDeleteFile={onDeleteFile}
                     onRenameFile={onRenameFile}
@@ -316,6 +359,7 @@ function FolderTree({
                   parentId={folder.id}
                   selectedFolderId={selectedFolderId}
                   selectedFileId={selectedFileId}
+                  compact={compact}
                   onSelectFolder={onSelectFolder}
                   onSelectFile={onSelectFile}
                   onCreateFolder={onCreateFolder}
@@ -336,6 +380,7 @@ function FolderTree({
           file={file}
           depth={0}
           isSelected={selectedFileId === file.id}
+          compact={compact}
           onSelectFile={onSelectFile}
           onDeleteFile={onDeleteFile}
           onRenameFile={onRenameFile}
@@ -348,6 +393,7 @@ function FolderTree({
 export function Sidebar(props: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [compact, setCompact] = useState(false)
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
@@ -357,45 +403,65 @@ export function Sidebar(props: SidebarProps) {
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
-      <div className="flex h-10 items-center justify-between border-b px-3">
-        <span className="text-sm font-medium">Folders</span>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon-xs">
-              <FolderPlus className="size-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>New Folder</DialogTitle>
-              <DialogDescription>
-                Create a new folder to organize your files.
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleCreateFolder()
-              }}
-              className="space-y-4"
-            >
-              <Input
-                placeholder="Folder name"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                autoFocus
-              />
-              <Button type="submit" className="w-full">
-                Create
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <ScrollArea className="flex-1 p-2">
-        <FolderTree {...props} parentId={null} />
-      </ScrollArea>
-    </aside>
+    <TooltipProvider>
+      <aside
+        className={`flex shrink-0 flex-col border-r bg-sidebar transition-[width] duration-200 ${
+          compact ? "w-12" : "w-64"
+        }`}
+      >
+        <div className={`flex h-10 items-center border-b ${compact ? "justify-center px-1" : "justify-between px-3"}`}>
+          {!compact && <span className="text-sm font-medium">Folders</span>}
+          <div className={`flex items-center ${compact ? "gap-0" : "gap-0.5"}`}>
+            {!compact && (
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon-xs">
+                    <FolderPlus className="size-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>New Folder</DialogTitle>
+                    <DialogDescription>
+                      Create a new folder to organize your files.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      handleCreateFolder()
+                    }}
+                    className="space-y-4"
+                  >
+                    <Input
+                      placeholder="Folder name"
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      autoFocus
+                    />
+                    <Button type="submit" className="w-full">
+                      Create
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-xs" onClick={() => setCompact((v) => !v)}>
+                  {compact ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {compact ? "サイドバーを展開" : "サイドバーを縮小"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+        <ScrollArea className={`flex-1 ${compact ? "p-1" : "p-2"}`}>
+          <FolderTree {...props} parentId={null} compact={compact} />
+        </ScrollArea>
+      </aside>
+    </TooltipProvider>
   )
 }
