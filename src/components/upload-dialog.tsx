@@ -19,7 +19,10 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
   const [open, setOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const isPptx = (name: string) => /\.pptx?$/i.test(name)
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
@@ -30,17 +33,25 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
 
       setUploading(true)
       setError(null)
+      setStatusMessage(null)
 
       for (const file of Array.from(fileList)) {
+        if (isPptx(file.name)) {
+          setStatusMessage(`Converting ${file.name} to PDF...`)
+        } else {
+          setStatusMessage(`Uploading ${file.name}...`)
+        }
         const result = await onUpload(file, folderId)
         if (result.error) {
           setError(result.error)
           setUploading(false)
+          setStatusMessage(null)
           return
         }
       }
 
       setUploading(false)
+      setStatusMessage(null)
       setOpen(false)
     },
     [folderId, onUpload]
@@ -59,6 +70,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
             Upload .md, .pdf, .xlsx, or .pptx files to the selected folder.
+            PowerPoint files will be automatically converted to PDF.
           </DialogDescription>
         </DialogHeader>
         <div
@@ -102,7 +114,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
               input.click()
             }}
           >
-            {uploading ? "Uploading..." : "Choose Files"}
+            {uploading ? (statusMessage ?? "Uploading...") : "Choose Files"}
           </Button>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}

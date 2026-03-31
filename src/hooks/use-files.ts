@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { convertPptxToPdf } from "@/lib/pptx-to-pdf"
 import type { FileRecord } from "@/lib/types"
 
 async function loadFiles(folderId: string) {
@@ -51,19 +52,38 @@ export function useFiles(folderId: string | null) {
       return { error: "Only .md, .pdf, .xlsx/.xls, and .pptx/.ppt files are supported" }
     }
 
-    const storagePath = `${user.id}/${folderId}/${crypto.randomUUID()}.${ext}`
+    // Convert PPTX/PPT to PDF before uploading
+    let uploadTarget = file
+    let finalType: "md" | "pdf" | "xlsx" | "pptx" = fileType as "md" | "pdf" | "xlsx" | "pptx"
+    let finalExt = ext
+    if (fileType === "pptx") {
+      try {
+        uploadTarget = await convertPptxToPdf(file)
+        finalType = "pdf"
+        finalExt = "pdf"
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        return { error: `Failed to convert PowerPoint to PDF: ${msg}` }
+      }
+    }
+
+    const storagePath = `${user.id}/${folderId}/${crypto.randomUUID()}.${finalExt}`
 
     const { error: uploadError } = await supabase.storage
       .from("anyfolio-files")
-      .upload(storagePath, file)
+      .upload(storagePath, uploadTarget)
 
     if (uploadError) return { error: uploadError.message }
+
+    const displayName = fileType === "pptx"
+      ? file.name.replace(/\.pptx?$/i, ".pdf")
+      : file.name
 
     const { error: dbError } = await supabase.from("anyfolio_files").insert({
       user_id: user.id,
       folder_id: folderId,
-      name: file.name,
-      type: fileType as "md" | "pdf" | "xlsx" | "pptx",
+      name: displayName,
+      type: finalType,
       storage_path: storagePath,
     })
 
