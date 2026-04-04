@@ -6,10 +6,12 @@ import { MarkdownViewer } from "@/components/file-viewer/markdown-viewer"
 import { PdfViewer } from "@/components/file-viewer/pdf-viewer"
 import { ExcelViewer } from "@/components/file-viewer/excel-viewer"
 import { PptxViewer } from "@/components/file-viewer/pptx-viewer"
+import { ImageViewer } from "@/components/file-viewer/image-viewer"
 import { UploadDialog } from "@/components/upload-dialog"
 import { Button } from "@/components/ui/button"
 import { useFolders } from "@/hooks/use-folders"
 import { useFiles } from "@/hooks/use-files"
+import { useAllFiles } from "@/hooks/use-all-files"
 import type { FileRecord } from "@/lib/types"
 
 export function DashboardPage() {
@@ -37,6 +39,7 @@ export function DashboardPage() {
 
   const { folders, createFolder, deleteFolder, renameFolder } = useFolders()
   const { files, uploadFile, deleteFile, renameFile } = useFiles(selectedFolderId)
+  const { allFiles, refetch: refetchAllFiles } = useAllFiles()
 
   const handleSelectFolder = (id: string | null) => {
     setSelectedFolderId(id)
@@ -47,11 +50,18 @@ export function DashboardPage() {
     setSelectedFile(file)
   }
 
+  const handleNavigateToFile = (file: FileRecord) => {
+    setSelectedFolderId(file.folder_id)
+    setSelectedFile(file)
+  }
+
   const handleDeleteFile = async (file: FileRecord) => {
     if (selectedFile?.id === file.id) {
       setSelectedFile(null)
     }
-    return await deleteFile(file)
+    const result = await deleteFile(file)
+    await refetchAllFiles()
+    return result
   }
 
   const handleRenameFile = async (file: FileRecord, newName: string) => {
@@ -59,6 +69,7 @@ export function DashboardPage() {
     if (!result?.error && selectedFile?.id === file.id) {
       setSelectedFile({ ...file, name: newName.trim() })
     }
+    await refetchAllFiles()
     return result
   }
 
@@ -69,10 +80,12 @@ export function DashboardPage() {
         <Sidebar
           folders={folders}
           files={files}
+          allFiles={allFiles}
           selectedFolderId={selectedFolderId}
           selectedFileId={selectedFile?.id ?? null}
           onSelectFolder={handleSelectFolder}
           onSelectFile={handleSelectFile}
+          onNavigateToFile={handleNavigateToFile}
           onCreateFolder={createFolder}
           onDeleteFolder={deleteFolder}
           onRenameFolder={renameFolder}
@@ -88,16 +101,22 @@ export function DashboardPage() {
                   ? "Select a file to view"
                   : "Select a folder"}
             </span>
-            <UploadDialog folderId={selectedFolderId} onUpload={uploadFile} />
+            <UploadDialog folderId={selectedFolderId} onUpload={async (file, folderId) => {
+              const result = await uploadFile(file, folderId)
+              if (!result.error) await refetchAllFiles()
+              return result
+            }} />
           </div>
           <div ref={contentRef} className="relative flex-1 overflow-auto">
             {selectedFile ? (
               selectedFile.type === "md" ? (
-                <MarkdownViewer file={selectedFile} />
+                <MarkdownViewer file={selectedFile} allFiles={allFiles} onNavigateToFile={handleNavigateToFile} />
               ) : selectedFile.type === "xlsx" ? (
                 <ExcelViewer file={selectedFile} />
               ) : selectedFile.type === "pptx" ? (
                 <PptxViewer file={selectedFile} />
+              ) : selectedFile.type === "image" ? (
+                <ImageViewer file={selectedFile} />
               ) : (
                 <PdfViewer file={selectedFile} />
               )

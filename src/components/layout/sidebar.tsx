@@ -7,11 +7,14 @@ import {
   FileText,
   FileType,
   FileSpreadsheet,
+  Image,
   Presentation,
   Pencil,
   Trash2,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,10 +49,12 @@ import type { Folder as FolderType, FileRecord } from "@/lib/types"
 type SidebarProps = {
   folders: FolderType[]
   files: FileRecord[]
+  allFiles: FileRecord[]
   selectedFolderId: string | null
   selectedFileId: string | null
   onSelectFolder: (id: string | null) => void
   onSelectFile: (file: FileRecord) => void
+  onNavigateToFile: (file: FileRecord) => void
   onCreateFolder: (name: string, parentId: string | null) => Promise<{ error: string | null } | undefined>
   onDeleteFolder: (id: string) => Promise<{ error: string | null } | undefined>
   onRenameFolder: (id: string, newName: string) => Promise<{ error: string | null } | undefined>
@@ -61,6 +66,7 @@ function fileIcon(type: string) {
   if (type === "md") return <FileText className="size-4 shrink-0 text-muted-foreground" />
   if (type === "xlsx") return <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />
   if (type === "pptx") return <Presentation className="size-4 shrink-0 text-muted-foreground" />
+  if (type === "image") return <Image className="size-4 shrink-0 text-muted-foreground" />
   return <FileType className="size-4 shrink-0 text-muted-foreground" />
 }
 
@@ -157,7 +163,7 @@ function FileItem({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete File</AlertDialogTitle>
                     <AlertDialogDescription>
-                      &quot;{file.name}&quot; を削除しますか？この操作は取り消せません。
+                      Are you sure you want to delete &quot;{file.name}&quot;? This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -193,12 +199,14 @@ function FileItem({
 function FolderTree({
   folders,
   files,
+  allFiles,
   parentId,
   selectedFolderId,
   selectedFileId,
   compact,
   onSelectFolder,
   onSelectFile,
+  onNavigateToFile,
   onCreateFolder,
   onDeleteFolder,
   onRenameFolder,
@@ -308,7 +316,7 @@ function FolderTree({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Folder</AlertDialogTitle>
                           <AlertDialogDescription>
-                            &quot;{folder.name}&quot; を削除しますか？フォルダ内のファイルもすべて削除されます。
+                            Are you sure you want to delete &quot;{folder.name}&quot;? All files in this folder will also be deleted.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -356,12 +364,14 @@ function FolderTree({
                 <FolderTree
                   folders={folders}
                   files={files}
+                  allFiles={allFiles}
                   parentId={folder.id}
                   selectedFolderId={selectedFolderId}
                   selectedFileId={selectedFileId}
                   compact={compact}
                   onSelectFolder={onSelectFolder}
                   onSelectFile={onSelectFile}
+                  onNavigateToFile={onNavigateToFile}
                   onCreateFolder={onCreateFolder}
                   onDeleteFolder={onDeleteFolder}
                   onRenameFolder={onRenameFolder}
@@ -390,10 +400,41 @@ function FolderTree({
   )
 }
 
+function SearchResultItem({
+  file,
+  folderName,
+  isSelected,
+  onSelect,
+}: {
+  file: FileRecord
+  folderName: string
+  isSelected: boolean
+  onSelect: (file: FileRecord) => void
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
+        isSelected ? "bg-muted font-medium" : ""
+      }`}
+      onClick={() => onSelect(file)}
+    >
+      {fileIcon(file.type)}
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate">
+          {file.name.replace(/\.[^.]+$/, "")}
+          <span className="text-muted-foreground/60">{file.name.match(/\.[^.]+$/)?.[0]}</span>
+        </span>
+        <span className="truncate text-xs text-muted-foreground">{folderName}</span>
+      </div>
+    </div>
+  )
+}
+
 export function Sidebar(props: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [compact, setCompact] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
@@ -401,6 +442,14 @@ export function Sidebar(props: SidebarProps) {
     setNewFolderName("")
     setDialogOpen(false)
   }
+
+  const folderNameMap = new Map(props.folders.map((f) => [f.id, f.name]))
+
+  const searchResults = searchQuery.trim()
+    ? props.allFiles.filter((f) =>
+        f.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : []
 
   return (
     <TooltipProvider>
@@ -453,13 +502,53 @@ export function Sidebar(props: SidebarProps) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {compact ? "サイドバーを展開" : "サイドバーを縮小"}
+                {compact ? "Expand sidebar" : "Collapse sidebar"}
               </TooltipContent>
             </Tooltip>
           </div>
         </div>
+        {!compact && (
+          <div className="relative px-2 pt-2">
+            <Search className="absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search files..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 pl-7 pr-7 text-sm"
+            />
+            {searchQuery && (
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+        )}
         <ScrollArea className={`flex-1 ${compact ? "p-1" : "p-2"}`}>
-          <FolderTree {...props} parentId={null} compact={compact} />
+          {searchQuery.trim() ? (
+            searchResults.length > 0 ? (
+              searchResults.map((file) => (
+                <SearchResultItem
+                  key={file.id}
+                  file={file}
+                  folderName={folderNameMap.get(file.folder_id) ?? ""}
+                  isSelected={props.selectedFileId === file.id}
+                  onSelect={(f) => {
+                    props.onNavigateToFile(f)
+                    setSearchQuery("")
+                  }}
+                />
+              ))
+            ) : (
+              <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                No files found
+              </p>
+            )
+          ) : (
+            <FolderTree {...props} parentId={null} compact={compact} />
+          )}
         </ScrollArea>
       </aside>
     </TooltipProvider>

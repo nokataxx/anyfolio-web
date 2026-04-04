@@ -47,14 +47,15 @@ export function useFiles(folderId: string | null) {
     if (!user) return { error: "Not authenticated" }
 
     const ext = file.name.split(".").pop()?.toLowerCase()
-    const fileType = ext === "xls" ? "xlsx" : ext === "ppt" ? "pptx" : ext
-    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx" && fileType !== "pptx") {
-      return { error: "Only .md, .pdf, .xlsx/.xls, and .pptx/.ppt files are supported" }
+    const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
+    const fileType = ext === "xls" ? "xlsx" : ext === "ppt" ? "pptx" : imageExts.includes(ext ?? "") ? "image" : ext
+    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx" && fileType !== "pptx" && fileType !== "image") {
+      return { error: "Only .md, .pdf, .xlsx/.xls, .pptx/.ppt, and image files are supported" }
     }
 
     // Convert PPTX/PPT to PDF before uploading
     let uploadTarget = file
-    let finalType: "md" | "pdf" | "xlsx" | "pptx" = fileType as "md" | "pdf" | "xlsx" | "pptx"
+    let finalType: "md" | "pdf" | "xlsx" | "pptx" | "image" = fileType as "md" | "pdf" | "xlsx" | "pptx" | "image"
     let finalExt = ext
     if (fileType === "pptx") {
       try {
