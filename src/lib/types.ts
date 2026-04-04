@@ -9,7 +9,7 @@ export type Folder = {
 export type FileRecord = {
   id: string
   user_id: string
-  folder_id: string
+  folder_id: string | null
   name: string
   type: "md" | "pdf" | "xlsx" | "pptx" | "image"
   storage_path: string

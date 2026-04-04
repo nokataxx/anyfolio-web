@@ -12,7 +12,7 @@ import {
 
 type UploadDialogProps = {
   folderId: string | null
-  onUpload: (file: File, folderId: string) => Promise<{ error: string | null }>
+  onUpload: (file: File, folderId: string | null) => Promise<{ error: string | null }>
 }
 
 export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
@@ -26,11 +26,6 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
-      if (!folderId) {
-        setError("Please select a folder first")
-        return
-      }
-
       setUploading(true)
       setError(null)
       setStatusMessage(null)
@@ -60,7 +55,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={!folderId}>
+        <Button variant="outline" size="sm">
           <Upload className="size-4" />
           Upload
         </Button>

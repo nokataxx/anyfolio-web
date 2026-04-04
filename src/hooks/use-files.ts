@@ -3,12 +3,17 @@ import { supabase } from "@/lib/supabase"
 import { convertPptxToPdf } from "@/lib/pptx-to-pdf"
 import type { FileRecord } from "@/lib/types"
 
-async function loadFiles(folderId: string) {
-  const { data, error } = await supabase
+async function loadFiles(folderId: string | null) {
+  let query = supabase
     .from("anyfolio_files")
     .select("*")
-    .eq("folder_id", folderId)
     .order("name")
+  if (folderId) {
+    query = query.eq("folder_id", folderId)
+  } else {
+    query = query.is("folder_id", null)
+  }
+  const { data, error } = await query
   return { data, error }
 }
 
@@ -17,10 +22,6 @@ export function useFiles(folderId: string | null) {
   const [loading, setLoading] = useState(false)
 
   const fetchFiles = useCallback(async () => {
-    if (!folderId) {
-      setFiles([])
-      return
-    }
     setLoading(true)
     const { data, error } = await loadFiles(folderId)
     if (!error && data) {
@@ -30,7 +31,6 @@ export function useFiles(folderId: string | null) {
   }, [folderId])
 
   useEffect(() => {
-    if (!folderId) return
     let cancelled = false
     loadFiles(folderId).then(({ data, error }) => {
       if (cancelled) return
@@ -40,7 +40,7 @@ export function useFiles(folderId: string | null) {
     return () => { cancelled = true }
   }, [folderId])
 
-  const uploadFile = async (file: File, folderId: string) => {
+  const uploadFile = async (file: File, folderId: string | null) => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -68,7 +68,9 @@ export function useFiles(folderId: string | null) {
       }
     }
 
-    const storagePath = `${user.id}/${folderId}/${crypto.randomUUID()}.${finalExt}`
+    const storagePath = folderId
+      ? `${user.id}/${folderId}/${crypto.randomUUID()}.${finalExt}`
+      : `${user.id}/root/${crypto.randomUUID()}.${finalExt}`
 
     const { error: uploadError } = await supabase.storage
       .from("anyfolio-files")
@@ -82,7 +84,7 @@ export function useFiles(folderId: string | null) {
 
     const { error: dbError } = await supabase.from("anyfolio_files").insert({
       user_id: user.id,
-      folder_id: folderId,
+      folder_id: folderId ?? null,
       name: displayName,
       type: finalType,
       storage_path: storagePath,

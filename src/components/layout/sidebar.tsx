@@ -236,8 +236,8 @@ function FolderTree({
   const children = folders.filter((f) => f.parent_id === parentId)
 
   const folderFiles =
-    selectedFolderId && parentId === null
-      ? []
+    parentId === null
+      ? files.filter((f) => f.folder_id === null)
       : files.filter(
           (f) =>
             children.some((c) => c.id === f.folder_id) === false &&
@@ -433,19 +433,13 @@ function SearchResultItem({
 
 export function Sidebar(props: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState("")
-  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [compact, setCompact] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
-  const handleOpenCreateFolder = () => {
-    setNewFolderParentId(props.selectedFolderId)
-    setDialogOpen(true)
-  }
-
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
-    await props.onCreateFolder(newFolderName.trim(), newFolderParentId)
+    await props.onCreateFolder(newFolderName.trim(), props.selectedFolderId)
     setNewFolderName("")
     setDialogOpen(false)
   }
@@ -471,7 +465,7 @@ export function Sidebar(props: SidebarProps) {
             {!compact && (
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon-xs" onClick={handleOpenCreateFolder}>
+                  <Button variant="ghost" size="icon-xs">
                     <FolderPlus className="size-4" />
                   </Button>
                 </DialogTrigger>
@@ -495,17 +489,7 @@ export function Sidebar(props: SidebarProps) {
                       onChange={(e) => setNewFolderName(e.target.value)}
                       autoFocus
                     />
-                    <select
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      value={newFolderParentId ?? ""}
-                      onChange={(e) => setNewFolderParentId(e.target.value || null)}
-                    >
-                      <option value="">Root (top level)</option>
-                      {props.folders.map((f) => (
-                        <option key={f.id} value={f.id}>{f.name}</option>
-                      ))}
-                    </select>
-                    <Button type="submit" className="w-full">
+<Button type="submit" className="w-full">
                       Create
                     </Button>
                   </form>
@@ -553,7 +537,7 @@ export function Sidebar(props: SidebarProps) {
                   <SearchResultItem
                     key={file.id}
                     file={file}
-                    folderName={folderNameMap.get(file.folder_id) ?? ""}
+                    folderName={file.folder_id ? folderNameMap.get(file.folder_id) ?? "" : ""}
                     isSelected={props.selectedFileId === file.id}
                     onSelect={(f) => {
                       props.onNavigateToFile(f)

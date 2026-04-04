@@ -97,12 +97,10 @@ export function DashboardPage() {
             <span className="flex-1 text-sm text-muted-foreground">
               {selectedFile
                 ? selectedFile.name.replace(/\.[^.]+$/, "")
-                : selectedFolderId
-                  ? "Select a file to view"
-                  : "Select a folder"}
+                : "Select a file to view"}
             </span>
-            <UploadDialog folderId={selectedFolderId} onUpload={async (file, folderId) => {
-              const result = await uploadFile(file, folderId)
+            <UploadDialog folderId={selectedFolderId} onUpload={async (file, fId) => {
+              const result = await uploadFile(file, fId)
               if (!result.error) await refetchAllFiles()
               return result
             }} />
