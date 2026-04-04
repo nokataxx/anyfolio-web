@@ -108,10 +108,10 @@ function FileItem({
   const item = (
     <div
       className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
-        isSelected ? "bg-muted font-medium" : ""
+        isSelected ? "bg-primary/15 font-medium text-primary" : ""
       } ${compact ? "justify-center px-0" : ""}`}
       style={compact ? undefined : { paddingLeft: `${depth * 16 + 8}px` }}
-      onClick={() => !editing && onSelectFile(file)}
+      onClick={(e) => { e.stopPropagation(); if (!editing) onSelectFile(file) }}
     >
       {fileIcon(file.type)}
       {!compact && (
@@ -248,17 +248,18 @@ function FolderTree({
     <>
       {children.map((folder) => {
         const isExpanded = expanded[folder.id] ?? false
-        const isSelected = selectedFolderId === folder.id
+        const isSelected = selectedFolderId === folder.id && !selectedFileId
         const isEditing = editingFolderId === folder.id
         const childFiles = files.filter((f) => f.folder_id === folder.id)
 
         const folderItem = (
           <div
             className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
-              isSelected ? "bg-muted font-medium" : ""
+              isSelected ? "bg-primary/15 font-medium text-primary" : ""
             } ${compact ? "justify-center px-0" : ""}`}
             style={compact ? undefined : { paddingLeft: `${depth * 16 + 8}px` }}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               if (!isEditing) {
                 onSelectFolder(folder.id)
                 setExpanded((prev) => ({ ...prev, [folder.id]: !prev[folder.id] }))
@@ -414,9 +415,9 @@ function SearchResultItem({
   return (
     <div
       className={`flex items-center gap-2 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
-        isSelected ? "bg-muted font-medium" : ""
+        isSelected ? "bg-primary/15 font-medium text-primary" : ""
       }`}
-      onClick={() => onSelect(file)}
+      onClick={(e) => { e.stopPropagation(); onSelect(file) }}
     >
       {fileIcon(file.type)}
       <div className="flex min-w-0 flex-col">
@@ -432,13 +433,19 @@ function SearchResultItem({
 
 export function Sidebar(props: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState("")
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [compact, setCompact] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
+  const handleOpenCreateFolder = () => {
+    setNewFolderParentId(props.selectedFolderId)
+    setDialogOpen(true)
+  }
+
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
-    await props.onCreateFolder(newFolderName.trim(), props.selectedFolderId)
+    await props.onCreateFolder(newFolderName.trim(), newFolderParentId)
     setNewFolderName("")
     setDialogOpen(false)
   }
@@ -464,7 +471,7 @@ export function Sidebar(props: SidebarProps) {
             {!compact && (
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon-xs">
+                  <Button variant="ghost" size="icon-xs" onClick={handleOpenCreateFolder}>
                     <FolderPlus className="size-4" />
                   </Button>
                 </DialogTrigger>
@@ -488,6 +495,16 @@ export function Sidebar(props: SidebarProps) {
                       onChange={(e) => setNewFolderName(e.target.value)}
                       autoFocus
                     />
+                    <select
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      value={newFolderParentId ?? ""}
+                      onChange={(e) => setNewFolderParentId(e.target.value || null)}
+                    >
+                      <option value="">Root (top level)</option>
+                      {props.folders.map((f) => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
                     <Button type="submit" className="w-full">
                       Create
                     </Button>
@@ -526,29 +543,33 @@ export function Sidebar(props: SidebarProps) {
             )}
           </div>
         )}
-        <ScrollArea className={`flex-1 ${compact ? "p-1" : "p-2"}`}>
-          {searchQuery.trim() ? (
-            searchResults.length > 0 ? (
-              searchResults.map((file) => (
-                <SearchResultItem
-                  key={file.id}
-                  file={file}
-                  folderName={folderNameMap.get(file.folder_id) ?? ""}
-                  isSelected={props.selectedFileId === file.id}
-                  onSelect={(f) => {
-                    props.onNavigateToFile(f)
-                    setSearchQuery("")
-                  }}
-                />
-              ))
+        <ScrollArea className={`flex-1 ${compact ? "p-1" : "p-2"}`} onClick={() => {
+          props.onSelectFolder(null)
+        }}>
+          <div>
+            {searchQuery.trim() ? (
+              searchResults.length > 0 ? (
+                searchResults.map((file) => (
+                  <SearchResultItem
+                    key={file.id}
+                    file={file}
+                    folderName={folderNameMap.get(file.folder_id) ?? ""}
+                    isSelected={props.selectedFileId === file.id}
+                    onSelect={(f) => {
+                      props.onNavigateToFile(f)
+                      setSearchQuery("")
+                    }}
+                  />
+                ))
+              ) : (
+                <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  No files found
+                </p>
+              )
             ) : (
-              <p className="px-2 py-4 text-center text-sm text-muted-foreground">
-                No files found
-              </p>
-            )
-          ) : (
-            <FolderTree {...props} parentId={null} compact={compact} />
-          )}
+              <FolderTree {...props} parentId={null} compact={compact} />
+            )}
+          </div>
         </ScrollArea>
       </aside>
     </TooltipProvider>
