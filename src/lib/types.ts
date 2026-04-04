@@ -11,7 +11,7 @@ export type FileRecord = {
   user_id: string
   folder_id: string | null
   name: string
-  type: "md" | "pdf" | "xlsx" | "pptx" | "image"
+  type: "md" | "pdf" | "xlsx" | "pptx" | "image" | "txt"
   storage_path: string
   created_at: string
   updated_at: string

@@ -23,6 +23,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
   const [error, setError] = useState<string | null>(null)
 
   const isPptx = (name: string) => /\.pptx?$/i.test(name)
+  const isDocx = (name: string) => /\.docx?$/i.test(name)
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
@@ -33,6 +34,8 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
       for (const file of Array.from(fileList)) {
         if (isPptx(file.name)) {
           setStatusMessage(`Converting ${file.name} to PDF...`)
+        } else if (isDocx(file.name)) {
+          setStatusMessage(`Converting ${file.name} to text...`)
         } else {
           setStatusMessage(`Uploading ${file.name}...`)
         }
@@ -64,8 +67,8 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
-            Upload .md, .pdf, .xlsx, .pptx, or image files to the selected folder.
-            PowerPoint files will be automatically converted to PDF.
+            Upload .md, .pdf, .xlsx, .pptx, .docx, .txt, or image files to the selected folder.
+            PowerPoint files are converted to PDF, Word files are converted to text.
           </DialogDescription>
         </DialogHeader>
         <div
@@ -101,7 +104,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
             <>
               <Upload className="mb-2 size-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Drag & drop files here (.md, .pdf, .xlsx, .pptx, images)
+                Drag & drop files here (.md, .pdf, .xlsx, .pptx, .docx, .txt, images)
               </p>
               <p className="mb-4 text-xs text-muted-foreground">or</p>
               <Button
@@ -111,7 +114,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
                   const input = document.createElement("input")
                   input.type = "file"
                   input.multiple = true
-                  input.accept = ".md,.pdf,.xlsx,.xls,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.webp,.svg"
+                  input.accept = ".md,.pdf,.xlsx,.xls,.pptx,.ppt,.docx,.doc,.txt,.png,.jpg,.jpeg,.gif,.webp,.svg"
                   input.onchange = () => {
                     if (input.files?.length) {
                       handleFiles(input.files)

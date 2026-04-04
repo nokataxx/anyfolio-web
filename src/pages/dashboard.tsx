@@ -7,6 +7,7 @@ import { PdfViewer } from "@/components/file-viewer/pdf-viewer"
 import { ExcelViewer } from "@/components/file-viewer/excel-viewer"
 import { PptxViewer } from "@/components/file-viewer/pptx-viewer"
 import { ImageViewer } from "@/components/file-viewer/image-viewer"
+import { TextViewer } from "@/components/file-viewer/text-viewer"
 import { UploadDialog } from "@/components/upload-dialog"
 import { Button } from "@/components/ui/button"
 import { useFolders } from "@/hooks/use-folders"
@@ -127,6 +128,8 @@ export function DashboardPage() {
                 <PptxViewer file={selectedFile} />
               ) : selectedFile.type === "image" ? (
                 <ImageViewer file={selectedFile} />
+              ) : selectedFile.type === "txt" ? (
+                <TextViewer file={selectedFile} />
               ) : (
                 <PdfViewer file={selectedFile} />
               )

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { convertPptxToPdf } from "@/lib/pptx-to-pdf"
+import { convertDocxToTxt } from "@/lib/docx-to-txt"
 import type { FileRecord } from "@/lib/types"
 
 async function loadFiles(folderId: string | null) {
@@ -48,15 +49,26 @@ export function useFiles(folderId: string | null) {
 
     const ext = file.name.split(".").pop()?.toLowerCase()
     const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "svg"]
-    const fileType = ext === "xls" ? "xlsx" : ext === "ppt" ? "pptx" : imageExts.includes(ext ?? "") ? "image" : ext
-    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx" && fileType !== "pptx" && fileType !== "image") {
-      return { error: "Only .md, .pdf, .xlsx/.xls, .pptx/.ppt, and image files are supported" }
+    const isDocx = ext === "docx" || ext === "doc"
+    const fileType = ext === "xls" ? "xlsx" : ext === "ppt" ? "pptx" : isDocx ? "docx" : imageExts.includes(ext ?? "") ? "image" : ext
+    if (fileType !== "md" && fileType !== "pdf" && fileType !== "xlsx" && fileType !== "pptx" && fileType !== "image" && fileType !== "txt" && fileType !== "docx") {
+      return { error: "Only .md, .pdf, .xlsx/.xls, .pptx/.ppt, .docx/.doc, .txt, and image files are supported" }
     }
 
     // Convert PPTX/PPT to PDF before uploading
     let uploadTarget = file
-    let finalType: "md" | "pdf" | "xlsx" | "pptx" | "image" = fileType as "md" | "pdf" | "xlsx" | "pptx" | "image"
+    let finalType: "md" | "pdf" | "xlsx" | "pptx" | "image" | "txt" = fileType as "md" | "pdf" | "xlsx" | "pptx" | "image" | "txt"
     let finalExt = ext
+    if (fileType === "docx") {
+      try {
+        uploadTarget = await convertDocxToTxt(file)
+        finalType = "txt"
+        finalExt = "txt"
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error"
+        return { error: `Failed to convert Word to text: ${msg}` }
+      }
+    }
     if (fileType === "pptx") {
       try {
         uploadTarget = await convertPptxToPdf(file)
@@ -80,7 +92,9 @@ export function useFiles(folderId: string | null) {
 
     const displayName = fileType === "pptx"
       ? file.name.replace(/\.pptx?$/i, ".pdf")
-      : file.name
+      : fileType === "docx"
+        ? file.name.replace(/\.docx?$/i, ".txt")
+        : file.name
 
     const { error: dbError } = await supabase.from("anyfolio_files").insert({
       user_id: user.id,
