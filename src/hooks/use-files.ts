@@ -129,5 +129,17 @@ export function useFiles(folderId: string | null) {
     return { error: null }
   }
 
-  return { files, loading, uploadFile, deleteFile, renameFile, refetch: fetchFiles }
+  const moveFile = async (fileId: string, newFolderId: string | null) => {
+    const { error: dbError } = await supabase
+      .from("anyfolio_files")
+      .update({ folder_id: newFolderId })
+      .eq("id", fileId)
+
+    if (dbError) return { error: dbError.message }
+
+    await fetchFiles()
+    return { error: null }
+  }
+
+  return { files, loading, uploadFile, deleteFile, renameFile, moveFile, refetch: fetchFiles }
 }

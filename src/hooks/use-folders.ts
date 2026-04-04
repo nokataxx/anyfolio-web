@@ -74,5 +74,28 @@ export function useFolders() {
     return { error: error?.message ?? null }
   }
 
-  return { folders, loading, createFolder, deleteFolder, renameFolder, refetch: fetchFolders }
+  const moveFolder = async (folderId: string, newParentId: string | null) => {
+    if (folderId === newParentId) return { error: "Cannot move folder into itself" }
+
+    // Prevent moving a folder into its own descendant
+    const isDescendant = (parentId: string | null): boolean => {
+      if (parentId === null) return false
+      if (parentId === folderId) return true
+      const parent = folders.find((f) => f.id === parentId)
+      return parent ? isDescendant(parent.parent_id) : false
+    }
+    if (isDescendant(newParentId)) return { error: "Cannot move folder into its own subfolder" }
+
+    const { error } = await supabase
+      .from("anyfolio_folders")
+      .update({ parent_id: newParentId })
+      .eq("id", folderId)
+
+    if (!error) {
+      await fetchFolders()
+    }
+    return { error: error?.message ?? null }
+  }
+
+  return { folders, loading, createFolder, deleteFolder, renameFolder, moveFolder, refetch: fetchFolders }
 }

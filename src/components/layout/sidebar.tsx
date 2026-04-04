@@ -60,6 +60,8 @@ type SidebarProps = {
   onRenameFolder: (id: string, newName: string) => Promise<{ error: string | null } | undefined>
   onDeleteFile: (file: FileRecord) => Promise<{ error: string | null } | undefined>
   onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
+  onMoveFile: (fileId: string, newFolderId: string | null) => Promise<{ error: string | null } | undefined>
+  onMoveFolder: (folderId: string, newParentId: string | null) => Promise<{ error: string | null } | undefined>
 }
 
 function fileIcon(type: string) {
@@ -111,6 +113,13 @@ function FileItem({
         isSelected ? "bg-primary/15 font-medium text-primary" : ""
       } ${compact ? "justify-center px-0" : ""}`}
       style={compact ? undefined : { paddingLeft: `${depth * 16 + 8}px` }}
+      draggable={!editing}
+      onDragStart={(e) => {
+        e.stopPropagation()
+        e.dataTransfer.setData("application/x-anyfolio-type", "file")
+        e.dataTransfer.setData("application/x-anyfolio-id", file.id)
+        e.dataTransfer.effectAllowed = "move"
+      }}
       onClick={(e) => { e.stopPropagation(); if (!editing) onSelectFile(file) }}
     >
       {fileIcon(file.type)}
@@ -212,12 +221,43 @@ function FolderTree({
   onRenameFolder,
   onDeleteFile,
   onRenameFile,
+  onMoveFile,
+  onMoveFolder,
   depth = 0,
 }: SidebarProps & { parentId: string | null; compact: boolean; depth?: number }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
   const [editFolderName, setEditFolderName] = useState("")
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
+
+  const handleDrop = async (e: React.DragEvent, targetFolderId: string | null) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverFolderId(null)
+    const itemType = e.dataTransfer.getData("application/x-anyfolio-type")
+    const itemId = e.dataTransfer.getData("application/x-anyfolio-id")
+    if (!itemType || !itemId) return
+    if (itemType === "file") {
+      await onMoveFile(itemId, targetFolderId)
+    } else if (itemType === "folder") {
+      if (itemId === targetFolderId) return
+      await onMoveFolder(itemId, targetFolderId)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent, folderId: string | null) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverFolderId(folderId)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverFolderId(null)
+  }
 
   useEffect(() => {
     if (editingFolderId) {
@@ -237,12 +277,8 @@ function FolderTree({
 
   const folderFiles =
     parentId === null
-      ? files.filter((f) => f.folder_id === null)
-      : files.filter(
-          (f) =>
-            children.some((c) => c.id === f.folder_id) === false &&
-            f.folder_id === parentId
-        )
+      ? allFiles.filter((f) => f.folder_id === null)
+      : allFiles.filter((f) => f.folder_id === parentId)
 
   return (
     <>
@@ -250,14 +286,26 @@ function FolderTree({
         const isExpanded = expanded[folder.id] ?? false
         const isSelected = selectedFolderId === folder.id && !selectedFileId
         const isEditing = editingFolderId === folder.id
-        const childFiles = files.filter((f) => f.folder_id === folder.id)
+        const childFiles = allFiles.filter((f) => f.folder_id === folder.id)
+
+        const isDragOver = dragOverFolderId === folder.id
 
         const folderItem = (
           <div
             className={`group flex items-center gap-1 rounded-md px-2 py-1 text-sm cursor-pointer hover:bg-muted ${
               isSelected ? "bg-primary/15 font-medium text-primary" : ""
-            } ${compact ? "justify-center px-0" : ""}`}
+            } ${compact ? "justify-center px-0" : ""} ${isDragOver ? "ring-2 ring-primary bg-primary/10" : ""}`}
             style={compact ? undefined : { paddingLeft: `${depth * 16 + 8}px` }}
+            draggable={!isEditing}
+            onDragStart={(e) => {
+              e.stopPropagation()
+              e.dataTransfer.setData("application/x-anyfolio-type", "folder")
+              e.dataTransfer.setData("application/x-anyfolio-id", folder.id)
+              e.dataTransfer.effectAllowed = "move"
+            }}
+            onDragOver={(e) => handleDragOver(e, folder.id)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, folder.id)}
             onClick={(e) => {
               e.stopPropagation()
               if (!isEditing) {
@@ -378,6 +426,8 @@ function FolderTree({
                   onRenameFolder={onRenameFolder}
                   onDeleteFile={onDeleteFile}
                   onRenameFile={onRenameFile}
+                  onMoveFile={onMoveFile}
+                  onMoveFolder={onMoveFolder}
                   depth={depth + 1}
                 />
               </>
@@ -436,6 +486,7 @@ export function Sidebar(props: SidebarProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [compact, setCompact] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [rootDragOver, setRootDragOver] = useState(false)
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
@@ -527,9 +578,33 @@ export function Sidebar(props: SidebarProps) {
             )}
           </div>
         )}
-        <ScrollArea className={`flex-1 ${compact ? "p-1" : "p-2"}`} onClick={() => {
-          props.onSelectFolder(null)
-        }}>
+        <ScrollArea
+          className={`flex-1 ${compact ? "p-1" : "p-2"} ${rootDragOver ? "bg-primary/5" : ""}`}
+          onClick={() => {
+            props.onSelectFolder(null)
+          }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = "move"
+            setRootDragOver(true)
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault()
+            setRootDragOver(false)
+          }}
+          onDrop={async (e) => {
+            e.preventDefault()
+            setRootDragOver(false)
+            const itemType = e.dataTransfer.getData("application/x-anyfolio-type")
+            const itemId = e.dataTransfer.getData("application/x-anyfolio-id")
+            if (!itemType || !itemId) return
+            if (itemType === "file") {
+              await props.onMoveFile(itemId, null)
+            } else if (itemType === "folder") {
+              await props.onMoveFolder(itemId, null)
+            }
+          }}
+        >
           <div>
             {searchQuery.trim() ? (
               searchResults.length > 0 ? (

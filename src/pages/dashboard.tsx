@@ -37,8 +37,8 @@ export function DashboardPage() {
     contentRef.current?.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const { folders, createFolder, deleteFolder, renameFolder } = useFolders()
-  const { files, uploadFile, deleteFile, renameFile } = useFiles(selectedFolderId)
+  const { folders, createFolder, deleteFolder, renameFolder, moveFolder } = useFolders()
+  const { files, uploadFile, deleteFile, renameFile, moveFile } = useFiles(selectedFolderId)
   const { allFiles, refetch: refetchAllFiles } = useAllFiles()
 
   const handleSelectFolder = (id: string | null) => {
@@ -73,6 +73,16 @@ export function DashboardPage() {
     return result
   }
 
+  const handleMoveFile = async (fileId: string, newFolderId: string | null) => {
+    const result = await moveFile(fileId, newFolderId)
+    await refetchAllFiles()
+    return result
+  }
+
+  const handleMoveFolder = async (folderId: string, newParentId: string | null) => {
+    return await moveFolder(folderId, newParentId)
+  }
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <Header />
@@ -91,6 +101,8 @@ export function DashboardPage() {
           onRenameFolder={renameFolder}
           onDeleteFile={handleDeleteFile}
           onRenameFile={handleRenameFile}
+          onMoveFile={handleMoveFile}
+          onMoveFolder={handleMoveFolder}
         />
         <main className="flex flex-1 flex-col overflow-hidden">
           <div className="flex h-10 items-center gap-2 border-b px-4">
