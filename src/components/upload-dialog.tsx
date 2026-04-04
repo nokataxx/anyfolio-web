@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { Upload } from "lucide-react"
+import { Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -78,7 +78,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
             dragOver
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25"
-          }`}
+          } ${uploading ? "pointer-events-none opacity-60" : ""}`}
           onDragOver={(e) => {
             e.preventDefault()
             setDragOver(true)
@@ -92,30 +92,43 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
             }
           }}
         >
-          <Upload className="mb-2 size-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Drag & drop .md, .pdf, .xlsx, or .pptx files here
-          </p>
-          <p className="mb-4 text-xs text-muted-foreground">or</p>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={uploading}
-            onClick={() => {
-              const input = document.createElement("input")
-              input.type = "file"
-              input.multiple = true
-              input.accept = ".md,.pdf,.xlsx,.xls,.pptx,.ppt"
-              input.onchange = () => {
-                if (input.files?.length) {
-                  handleFiles(input.files)
-                }
-              }
-              input.click()
-            }}
-          >
-            {uploading ? (statusMessage ?? "Uploading...") : "Choose Files"}
-          </Button>
+          {uploading ? (
+            <>
+              <Loader2 className="mb-2 size-8 animate-spin text-primary" />
+              <p className="text-sm font-medium text-foreground">
+                {statusMessage ?? "Uploading..."}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Please wait while the file is being processed.
+              </p>
+            </>
+          ) : (
+            <>
+              <Upload className="mb-2 size-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Drag & drop .md, .pdf, .xlsx, or .pptx files here
+              </p>
+              <p className="mb-4 text-xs text-muted-foreground">or</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const input = document.createElement("input")
+                  input.type = "file"
+                  input.multiple = true
+                  input.accept = ".md,.pdf,.xlsx,.xls,.pptx,.ppt"
+                  input.onchange = () => {
+                    if (input.files?.length) {
+                      handleFiles(input.files)
+                    }
+                  }
+                  input.click()
+                }}
+              >
+                Choose Files
+              </Button>
+            </>
+          )}
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
       </DialogContent>
