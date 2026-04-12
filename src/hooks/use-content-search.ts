@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { backfillContentText } from "@/lib/backfill-content-text"
 import type { FileRecord, Folder } from "@/lib/types"
@@ -21,13 +21,14 @@ type ContentSearchState = {
 
 const DEBOUNCE_MS = 300
 const MAX_RESULTS = 50
+const EMPTY_RESULTS: SearchResult[] = []
 
 export function useContentSearch(
   allFiles: FileRecord[],
   folders: Folder[],
   enabled: boolean,
 ): ContentSearchState {
-  const [query, setQuery] = useState("")
+  const [query, setQueryState] = useState("")
   const [debouncedQuery, setDebouncedQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -47,34 +48,39 @@ export function useContentSearch(
     }
   }, [enabled, allFiles])
 
-  // Debounce query
+  // Debounce query — set isSearching here to avoid synchronous setState in the search effect
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(query)
+      if (query.trim()) setIsSearching(true)
+    }, DEBOUNCE_MS)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query])
 
-  // Reset when dialog closes
-  useEffect(() => {
+  const setQuery = useCallback((q: string) => {
+    setQueryState(q)
+  }, [])
+
+  // Reset internal state when dialog closes (React "store previous in state" pattern)
+  const [prevEnabled, setPrevEnabled] = useState(enabled)
+  if (prevEnabled !== enabled) {
+    setPrevEnabled(enabled)
     if (!enabled) {
-      setQuery("")
+      setQueryState("")
       setDebouncedQuery("")
       setResults([])
+      setIsSearching(false)
     }
-  }, [enabled])
+  }
 
   // Execute server-side search via RPC
   useEffect(() => {
-    if (!enabled || !debouncedQuery.trim()) {
-      setResults([])
-      setIsSearching(false)
-      return
-    }
+    if (!enabled || !debouncedQuery.trim()) return
 
     const requestId = ++abortRef.current
-    setIsSearching(true)
 
     supabase
       .rpc("search_file_contents", {
@@ -128,6 +134,10 @@ export function useContentSearch(
         setResults(mapped)
       })
   }, [enabled, debouncedQuery, folderMap])
+
+  if (!enabled) {
+    return { query: "", setQuery, results: EMPTY_RESULTS, isSearching: false }
+  }
 
   return { query, setQuery, results, isSearching }
 }

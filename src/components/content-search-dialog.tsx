@@ -117,10 +117,12 @@ export function ContentSearchDialog({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Reset selection when results change
-  useEffect(() => {
+  // Reset selection when results change (React "store previous in state" pattern)
+  const [prevResults, setPrevResults] = useState(results)
+  if (prevResults !== results) {
+    setPrevResults(results)
     setSelectedIndex(0)
-  }, [results])
+  }
 
   // Focus input when dialog opens
   useEffect(() => {

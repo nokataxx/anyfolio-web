@@ -120,7 +120,7 @@ export function DashboardPage() {
 
     setTimeout(tryFind, 300)
     return () => { cancelled = true }
-  }, [highlightTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [highlightTrigger])
 
   const { folders, createFolder, deleteFolder, renameFolder, moveFolder } = useFolders()
   const { files, uploadFile, deleteFile, renameFile, moveFile } = useFiles(selectedFolderId)

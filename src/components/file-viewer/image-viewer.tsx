@@ -40,9 +40,15 @@ export function ImageViewer({ file }: ImageViewerProps) {
     load()
     return () => {
       cancelled = true
-      if (url) URL.revokeObjectURL(url)
     }
   }, [file.storage_path])
+
+  // Revoke previous object URL when a new one is created or on unmount
+  useEffect(() => {
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [url])
 
   if (loading) {
     return (

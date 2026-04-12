@@ -4,12 +4,6 @@ import remarkParse from "remark-parse"
 import remarkWikilink from "../remark-wikilink"
 import type { Root, Link, Text } from "mdast"
 
-function parseWithWikilink(markdown: string): Root {
-  const processor = unified().use(remarkParse).use(remarkWikilink)
-  return processor.parse(markdown) as Root
-  // runSync applies the plugin transforms
-}
-
 function processWithWikilink(markdown: string): Root {
   const processor = unified().use(remarkParse).use(remarkWikilink)
   const tree = processor.parse(markdown)
