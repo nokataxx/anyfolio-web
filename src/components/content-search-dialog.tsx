@@ -109,7 +109,7 @@ export function ContentSearchDialog({
   onOpenChange,
   onSelectFile,
 }: ContentSearchDialogProps) {
-  const { query, setQuery, results, isExtracting, extractionProgress } = useContentSearch(
+  const { query, setQuery, results, isSearching } = useContentSearch(
     allFiles,
     folders,
     open,
@@ -174,9 +174,9 @@ export function ContentSearchDialog({
             className="h-10 border-0 shadow-none focus-visible:ring-0"
           />
         </div>
-        {isExtracting && (
+        {isSearching && query.trim() && (
           <div className="border-b px-3 py-1.5 text-xs text-muted-foreground">
-            Indexing files… ({extractionProgress.done}/{extractionProgress.total})
+            Searching…
           </div>
         )}
         <ScrollArea className="flex-1">
@@ -185,9 +185,9 @@ export function ContentSearchDialog({
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">
                 Type to search file contents
               </p>
-            ) : results.length === 0 ? (
+            ) : results.length === 0 && !isSearching ? (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                {isExtracting ? "Indexing files…" : "No matches found"}
+                No matches found
               </p>
             ) : (
               results.map((result, i) => (

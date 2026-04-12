@@ -20,6 +20,50 @@ export function getPdfPageTexts(storagePath: string): string[] | undefined {
   return pdfPageTextsCache.get(storagePath)
 }
 
+export type ExtractionResult = {
+  text: string
+  pages?: string[] // per-page texts for PDFs
+}
+
+/** Extract text from a Blob (for upload-time extraction, no download needed) */
+export async function extractTextFromBlob(
+  blob: Blob,
+  fileType: string,
+): Promise<ExtractionResult> {
+  switch (fileType) {
+    case "md":
+    case "txt": {
+      const buffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      const detected = Encoding.detect(bytes)
+      const unicodeArray = Encoding.convert(bytes, {
+        to: "UNICODE",
+        from: detected || "AUTO",
+      })
+      return { text: Encoding.codeToString(unicodeArray) }
+    }
+    case "pdf": {
+      const buffer = await blob.arrayBuffer()
+      const pdf = await pdfjs.getDocument({ data: buffer }).promise
+      const pages: string[] = []
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "))
+      }
+      return { text: pages.join("\n"), pages }
+    }
+    case "xlsx": {
+      const { read, utils } = await import("xlsx")
+      const buffer = await blob.arrayBuffer()
+      const wb = read(buffer, { type: "array" })
+      return { text: wb.SheetNames.map((name) => utils.sheet_to_csv(wb.Sheets[name])).join("\n") }
+    }
+    default:
+      return { text: "" }
+  }
+}
+
 export async function extractText(file: FileRecord): Promise<string> {
   const cached = textCache.get(file.storage_path)
   if (cached !== undefined) return cached

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { convertPptxToPdf } from "@/lib/pptx-to-pdf"
 import { convertDocxToTxt } from "@/lib/docx-to-txt"
+import { extractTextFromBlob } from "@/lib/text-extraction"
 import type { FileRecord } from "@/lib/types"
 
 async function loadFiles(folderId: string | null) {
@@ -96,12 +97,25 @@ export function useFiles(folderId: string | null) {
         ? file.name.replace(/\.docx?$/i, ".txt")
         : file.name
 
+    // Extract text content for fulltext search
+    let contentText: string | null = null
+    let contentPages: string[] | null = null
+    try {
+      const extraction = await extractTextFromBlob(uploadTarget, finalType)
+      if (extraction.text) contentText = extraction.text
+      if (extraction.pages) contentPages = extraction.pages
+    } catch {
+      // Non-fatal: file is uploaded but search won't find its content
+    }
+
     const { error: dbError } = await supabase.from("anyfolio_files").insert({
       user_id: user.id,
       folder_id: folderId ?? null,
       name: displayName,
       type: finalType,
       storage_path: storagePath,
+      content_text: contentText,
+      content_pages: contentPages,
     })
 
     if (dbError) return { error: dbError.message }
