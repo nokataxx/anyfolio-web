@@ -14,12 +14,92 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 type PdfViewerProps = {
   file: FileRecord
+  initialPage?: number
+  highlightQuery?: string
 }
 
-export function PdfViewer({ file }: PdfViewerProps) {
+function findAndHighlightInContainer(container: HTMLElement, query: string) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
+  const queryLower = query.toLowerCase()
+
+  // PDF text layer splits text across many <span>s.
+  // Collect consecutive text nodes and search across their concatenated text.
+  const textNodes: Text[] = []
+  while (walker.nextNode()) textNodes.push(walker.currentNode as Text)
+  if (textNodes.length === 0) return
+
+  // Build concatenated string with node boundary info
+  let concat = ""
+  const nodeOffsets: { node: Text; start: number }[] = []
+  for (const node of textNodes) {
+    nodeOffsets.push({ node, start: concat.length })
+    concat += node.textContent ?? ""
+  }
+
+  const matchStart = concat.toLowerCase().indexOf(queryLower)
+  if (matchStart === -1) return
+
+  const matchEnd = matchStart + query.length
+
+  // Find which nodes overlap with [matchStart, matchEnd)
+  const ranges: Range[] = []
+  for (let i = 0; i < nodeOffsets.length; i++) {
+    const nodeStart = nodeOffsets[i].start
+    const nodeText = nodeOffsets[i].node.textContent ?? ""
+    const nodeEnd = nodeStart + nodeText.length
+    if (nodeEnd <= matchStart) continue
+    if (nodeStart >= matchEnd) break
+
+    const range = document.createRange()
+    range.setStart(nodeOffsets[i].node, Math.max(0, matchStart - nodeStart))
+    range.setEnd(nodeOffsets[i].node, Math.min(nodeText.length, matchEnd - nodeStart))
+    ranges.push(range)
+  }
+
+  if (ranges.length === 0) return
+
+  // Scroll parent (the outer scroll container) to the match
+  const scrollParent = container.closest("[class*='overflow-auto']") as HTMLElement | null
+  if (scrollParent) {
+    const firstRect = ranges[0].getBoundingClientRect()
+    const parentRect = scrollParent.getBoundingClientRect()
+    scrollParent.scrollTo({
+      top: scrollParent.scrollTop + firstRect.top - parentRect.top - scrollParent.clientHeight / 3,
+      behavior: "smooth",
+    })
+  }
+
+  // Create highlight overlays
+  const pageContainer = container.closest(".react-pdf__Page") as HTMLElement | null ?? container
+  for (const range of ranges) {
+    const rect = range.getBoundingClientRect()
+    const baseRect = pageContainer.getBoundingClientRect()
+
+    const highlight = document.createElement("div")
+    highlight.className = "pdf-search-highlight"
+    highlight.style.cssText = [
+      "position:absolute",
+      "pointer-events:none",
+      "z-index:10",
+      "border-radius:2px",
+      "background:rgba(250,204,21,0.45)",
+      "transition:opacity 0.5s",
+      `top:${rect.top - baseRect.top}px`,
+      `left:${rect.left - baseRect.left}px`,
+      `width:${rect.width}px`,
+      `height:${rect.height}px`,
+    ].join(";")
+    pageContainer.appendChild(highlight)
+
+    setTimeout(() => { highlight.style.opacity = "0" }, 2500)
+    setTimeout(() => highlight.remove(), 3000)
+  }
+}
+
+export function PdfViewer({ file, initialPage, highlightQuery }: PdfViewerProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [numPages, setNumPages] = useState(0)
-  const [pageNumber, setPageNumber] = useState(1)
+  const [pageNumber, setPageNumber] = useState(initialPage ?? 1)
   const [scale, setScale] = useState(1.2)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,6 +107,33 @@ export function PdfViewer({ file }: PdfViewerProps) {
   const panState = useRef<{ active: boolean; startX: number; startY: number; scrollX: number; scrollY: number }>({
     active: false, startX: 0, startY: 0, scrollX: 0, scrollY: 0,
   })
+
+  const initialPageRef = useRef(initialPage)
+  initialPageRef.current = initialPage
+
+  const highlightQueryRef = useRef(highlightQuery)
+  highlightQueryRef.current = highlightQuery
+
+  useEffect(() => {
+    if (initialPage != null && initialPage >= 1) {
+      setPageNumber(initialPage)
+    }
+  }, [initialPage])
+
+  const handleTextLayerSuccess = useCallback(() => {
+    const query = highlightQueryRef.current
+    if (!query) return
+    highlightQueryRef.current = undefined
+    // Wait a frame for the text layer DOM to finalize
+    requestAnimationFrame(() => {
+      const container = containerRef.current
+      if (!container) return
+      const textLayer = container.querySelector(".react-pdf__Page__textContent")
+      if (textLayer) {
+        findAndHighlightInContainer(textLayer as HTMLElement, query)
+      }
+    })
+  }, [])
 
   const getScrollParent = useCallback((): HTMLElement | null => {
     let el = containerRef.current?.parentElement ?? null
@@ -122,7 +229,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
 
     async function load() {
       setError(null)
-      setPageNumber(1)
+      setPageNumber(initialPageRef.current ?? 1)
 
       const { data, error } = await supabase.storage
         .from("anyfolio-files")
@@ -213,7 +320,7 @@ export function PdfViewer({ file }: PdfViewerProps) {
             <div className="text-muted-foreground">Loading PDF...</div>
           }
         >
-          <Page pageNumber={pageNumber} scale={scale} />
+          <Page pageNumber={pageNumber} scale={scale} onRenderTextLayerSuccess={handleTextLayerSuccess} />
         </Document>
       </div>
     </div>
