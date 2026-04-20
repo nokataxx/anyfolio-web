@@ -59,7 +59,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Upload className="size-4" />
-          Upload
+          <span className="hidden sm:inline">Upload</span>
         </Button>
       </DialogTrigger>
       <DialogContent>

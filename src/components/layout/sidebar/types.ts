@@ -16,6 +16,10 @@ export type SidebarProps = {
   onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
   onMoveFile: (fileId: string, newFolderId: string | null) => Promise<{ error: string | null } | undefined>
   onMoveFolder: (folderId: string, newParentId: string | null) => Promise<{ error: string | null } | undefined>
+  /** Mobile-only: whether the sidebar overlay is open. Ignored on md+ viewports. */
+  mobileOpen?: boolean
+  /** Mobile-only: callback to close the overlay (backdrop tap, file select, etc.) */
+  onMobileClose?: () => void
 }
 
 export const DRAG_TYPE_MIME = "application/x-anyfolio-type"

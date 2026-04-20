@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { ArrowUp, Eye, Pencil, Save } from "lucide-react"
+import { ArrowUp, Eye, Menu, Pencil, Save } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
 import { UploadDialog } from "@/components/upload-dialog"
@@ -60,6 +60,7 @@ export function DashboardPage() {
     saving: false,
     ready: false,
   })
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const handleScroll = useCallback(() => {
     const el = contentRef.current
@@ -167,6 +168,7 @@ export function DashboardPage() {
     setPdfInitialPage(undefined)
     setPdfHighlightQuery(undefined)
     setSelectedFile(file)
+    setMobileSidebarOpen(false)
   }
 
   const handleNavigateToFile = (file: FileRecord) => {
@@ -174,6 +176,7 @@ export function DashboardPage() {
     setPdfHighlightQuery(undefined)
     setSelectedFolderId(file.folder_id)
     setSelectedFile(file)
+    setMobileSidebarOpen(false)
   }
 
   const handleDeleteFile = async (file: FileRecord) => {
@@ -235,10 +238,21 @@ export function DashboardPage() {
           onRenameFile={handleRenameFile}
           onMoveFile={handleMoveFile}
           onMoveFolder={handleMoveFolder}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
         />
         <main className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex h-10 items-center gap-2 border-b px-4">
-            <span className="flex-1 text-sm text-muted-foreground">
+          <div className="flex h-10 items-center gap-2 border-b px-2 md:px-4">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="md:hidden"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Open sidebar"
+            >
+              <Menu className="size-5" />
+            </Button>
+            <span className="flex-1 truncate text-sm text-muted-foreground">
               {selectedFile
                 ? selectedFile.name.replace(/\.[^.]+$/, "")
                 : "Select a file to view"}
@@ -252,7 +266,7 @@ export function DashboardPage() {
                   disabled={!markdownStatus.ready}
                 >
                   <Pencil className="size-4" />
-                  Edit
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
               ) : (
                 <>
@@ -263,7 +277,7 @@ export function DashboardPage() {
                     disabled={markdownStatus.saving}
                   >
                     <Eye className="size-4" />
-                    View
+                    <span className="hidden sm:inline">View</span>
                   </Button>
                   <Button
                     size="sm"
@@ -271,7 +285,9 @@ export function DashboardPage() {
                     disabled={!markdownStatus.isDirty || markdownStatus.saving}
                   >
                     <Save className="size-4" />
-                    {markdownStatus.saving ? "Saving..." : "Save"}
+                    <span className="hidden sm:inline">
+                      {markdownStatus.saving ? "Saving..." : "Save"}
+                    </span>
                   </Button>
                 </>
               )
