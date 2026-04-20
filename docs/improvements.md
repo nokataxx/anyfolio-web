@@ -8,44 +8,56 @@
 
 ### 高優先度
 
-| 課題 | 詳細 |
-|------|------|
-| テストがない | 単体・E2Eテストがゼロ。Vitest + Playwright の導入推奨 |
-| CI/CDがない | GitHub Actions で lint / build / test の自動化が必要 |
-| Error Boundaryがない | ビューアがクラッシュするとアプリ全体が白画面になる |
-| バンドルサイズが大きい | メインチャンク 2.86MB。ビューアのコード分割（lazy import）が必要 |
+| 課題 | 詳細 | 状態 |
+|------|------|------|
+| ~~テストがない~~ | ~~単体・E2Eテストがゼロ。Vitest + Playwright の導入推奨~~ | ✅ ユニットテスト 139件導入（E2E は未着手） |
+| ~~CI/CDがない~~ | ~~GitHub Actions で lint / build / test の自動化が必要~~ | ✅ `.github/workflows/ci.yml` 追加（PR・main push で lint / build / test） |
+| Error Boundaryがない | ビューアがクラッシュするとアプリ全体が白画面になる | ⏳ 未着手 |
+| バンドルサイズが大きい | メインチャンク 2.87MB。ビューアのコード分割（lazy import）が必要 | ⏳ 未着手 |
 
 ### 中優先度
 
-| 課題 | 詳細 |
-|------|------|
-| Sidebarコンポーネントが巨大 | 637行で責務が多すぎる。FolderItem / FileList 等に分割すべき |
-| Lintエラー | button.tsx の export が react-refresh 違反、image-viewer の useEffect deps 漏れ |
+| 課題 | 詳細 | 状態 |
+|------|------|------|
+| Sidebarコンポーネントが巨大 | 637行で責務が多すぎる。FolderItem / FileList 等に分割すべき | ⏳ 未着手 |
+| ~~Lintエラー~~ | ~~button.tsx の export が react-refresh 違反、image-viewer の useEffect deps 漏れ~~ | ✅ 修正済み |
 
 ### 低優先度
 
-| 課題 | 詳細 |
-|------|------|
-| 監視/ログがない | Sentry等の導入でプロダクションエラーを把握できるようにする |
-| 大量ファイル対応 | `useAllFiles()` が全件メモリ取得。1万件超で問題になる可能性 |
+| 課題 | 詳細 | 状態 |
+|------|------|------|
+| 監視/ログがない | Sentry等の導入でプロダクションエラーを把握できるようにする | ⏳ 未着手 |
+| 大量ファイル対応 | `useAllFiles()` が全件メモリ取得。1万件超で問題になる可能性 | ⏳ 未着手 |
 
 ---
 
-## Phase 2 に進む前の推奨アクション
+## 進捗サマリ（2026-04-20 時点）
 
-### 1. テスト基盤の構築
+### ✅ 完了
 
-- **Vitest + React Testing Library** でユニットテスト導入
-- **Playwright** でE2Eテスト（認証フロー、アップロード、ファイル閲覧）
-- カバレッジ目標: hooks と変換ロジック（docx-to-txt, pptx-to-pdf）を優先
+- **テスト基盤とユニットテスト**: Vitest + React Testing Library + jsdom 導入
+  - Phase 1: 基盤構築
+  - Phase 2: 純粋関数（`utils`, `remark-wikilink`, `docx-to-txt`, `text-extraction`, `pptx-helpers`）— 50テスト
+  - Phase 3: hooks + `backfillContentText`（Supabase モックヘルパー含む）— 40テスト
+  - Phase 4: コンポーネント（ビューア6種、ダイアログ/レイアウト4種）— 48テスト
+  - **合計: 20ファイル / 139テスト、実行時間 約3秒**
+  - 詳細: [testing-plan.md](./testing-plan.md)
+- **リファクタリング**: `pptx-to-pdf.ts` から純粋ヘルパーを `pptx-helpers.ts` に分離（テスト容易性向上）
+- **Lintエラー修正**: `button.tsx` の `buttonVariants` を `button-variants.ts` に分離、`image-viewer.tsx` の useEffect 依存修正ほか
+- **CI/CD**: GitHub Actions ワークフロー追加（[.github/workflows/ci.yml](../.github/workflows/ci.yml)）— PR および main への push で `npm run lint` / `npm run build` / `npm test` を自動実行
 
-### 2. CI/CD パイプライン構築
+### ⏳ 未着手（推奨アクションの残り）
 
-- **GitHub Actions** ワークフローを追加
-  - `npm run lint` — PR時にLintチェック
-  - `npm run build` — TypeScript型チェック + ビルド検証
-  - テスト実行
-  - Vercelへのプレビューデプロイ
+### 1. E2E テスト（Phase 5）
+
+- **Playwright** で認証フロー、アップロード、ファイル閲覧を検証
+- 事前に決める必要がある: テスト用 Supabase プロジェクトの運用、CI 実行戦略、認証の扱い
+- 手動テストの負担が増えた段階で着手するのがおすすめ
+
+### 2. Vercel プレビューデプロイ（任意）
+
+- Vercel 側の GitHub 連携で PR プレビューを自動生成
+- GitHub Actions とは独立して設定する
 
 ### 3. Error Boundary の追加
 
@@ -55,7 +67,7 @@
 ### 4. バンドルサイズの最適化
 
 - **React.lazy + Suspense** で各ビューアをコード分割
-  - MarkdownViewer, PdfViewer, ExcelViewer, TextViewer, ImageViewer
+  - MarkdownViewer, PdfViewer, ExcelViewer, TextViewer, ImageViewer, PptxViewer
 - PDF Worker の遅延読み込み
 - `npm run build` 後のチャンクサイズを500KB以下に抑える
 
@@ -68,7 +80,10 @@
   - `SidebarSearch` — 検索UI
   - `Sidebar` — 統合コンポーネント
 
-### 6. Lint エラーの修正
+### 6. 監視 / エラーログ
 
-- `button.tsx` の `buttonVariants` export を別ファイルに分離（react-refresh 違反）
-- `image-viewer.tsx` の useEffect 依存配列に `url` を追加
+- Sentry 等の導入でプロダクションエラーを把握
+
+### 7. 大量ファイル対応
+
+- `useAllFiles()` のページング or 仮想スクロール化（1万件超でのメモリ対策）
