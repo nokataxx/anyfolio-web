@@ -19,7 +19,7 @@
 
 | 課題 | 詳細 | 状態 |
 |------|------|------|
-| Sidebarコンポーネントが巨大 | 637行で責務が多すぎる。FolderItem / FileList 等に分割すべき | ⏳ 未着手 |
+| ~~Sidebarコンポーネントが巨大~~ | ~~637行で責務が多すぎる。FolderItem / FileList 等に分割すべき~~ | ✅ 637行 → 統合103行 + 7ファイルに分割（最大179行） |
 | ~~Lintエラー~~ | ~~button.tsx の export が react-refresh 違反、image-viewer の useEffect deps 漏れ~~ | ✅ 修正済み |
 
 ### 低優先度
@@ -47,6 +47,7 @@
 - **CI/CD**: GitHub Actions ワークフロー追加（[.github/workflows/ci.yml](../.github/workflows/ci.yml)）— PR および main への push で `npm run lint` / `npm run build` / `npm test` を自動実行
 - **Error Boundary**: `ViewerErrorBoundary` を追加し、ダッシュボードの各ビューアを包む。ビューアがクラッシュしてもアプリ全体は生存、ファイル切り替え時は自動リセット、ユーザーは「Try again」で再試行可能
 - **バンドルサイズ最適化**: ビューア6種を `React.lazy` + `Suspense` でコード分割。さらに `use-files.ts` の変換処理（pptx→pdf、docx→txt、テキスト抽出）と `backfillContentText` を動的 import に変更。結果: メイン 2.87MB → 600KB（gzip 177KB）、xlsx 重複 import 警告も解消
+- **Sidebar リファクタリング**: [sidebar.tsx](../src/components/layout/sidebar.tsx) を 637行 → 103行の統合コンポーネントに縮小。責務を [sidebar/](../src/components/layout/sidebar/) 配下の 7ファイルに分割: `types.ts` / `file-icon.tsx` / `file-item.tsx` / `folder-item.tsx` / `folder-tree.tsx` / `search-result-item.tsx` / `sidebar-search.tsx` / `sidebar-header.tsx`
 
 ### ⏳ 未着手（推奨アクションの残り）
 
@@ -61,19 +62,10 @@
 - Vercel 側の GitHub 連携で PR プレビューを自動生成
 - GitHub Actions とは独立して設定する
 
-### 3. Sidebar リファクタリング
-
-- 現在の637行を以下に分割:
-  - `FolderItem` — 単一フォルダの表示・編集・D&D
-  - `FileItem` — 既存だが独立ファイルへ抽出
-  - `FolderTree` — ツリー再帰ロジック
-  - `SidebarSearch` — 検索UI
-  - `Sidebar` — 統合コンポーネント
-
-### 4. 監視 / エラーログ
+### 3. 監視 / エラーログ
 
 - Sentry 等の導入でプロダクションエラーを把握
 
-### 5. 大量ファイル対応
+### 4. 大量ファイル対応
 
 - `useAllFiles()` のページング or 仮想スクロール化（1万件超でのメモリ対策）
