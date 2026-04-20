@@ -54,46 +54,53 @@
 
 ---
 
-## Phase 3: hooks のユニットテスト（未着手）
+## Phase 3: hooks のユニットテスト ✅ 完了
 
-`@testing-library/react` の `renderHook` を使用。Supabase クライアントは mock する。
+`@testing-library/react` の `renderHook` を使用。Supabase クライアントは共通モックヘルパー
+`src/test/supabase-mock.ts` を経由して mock する。
 
-| テストファイル | テスト対象 | 主なテスト観点 |
-|--------------|-----------|--------------|
-| `src/hooks/__tests__/use-files.test.ts` | `useFiles` | ファイル一覧取得、フィルタ、エラーハンドリング |
-| `src/hooks/__tests__/use-folders.test.ts` | `useFolders` | フォルダツリー取得、CRUD操作 |
-| `src/hooks/__tests__/use-all-files.test.ts` | `useAllFiles` | 全ファイル取得 |
-| `src/hooks/__tests__/use-content-search.test.ts` | `useContentSearch` | デバウンス、RPC 呼び出し、検索結果 |
+| テストファイル | テスト対象 | テスト数 | 状態 |
+|--------------|-----------|---------|------|
+| `src/hooks/__tests__/use-folders.test.ts` | `useFolders` — CRUD・循環防止 | 10 | ✅ |
+| `src/hooks/__tests__/use-all-files.test.ts` | `useAllFiles` — 全件取得・エラー処理 | 3 | ✅ |
+| `src/hooks/__tests__/use-files.test.ts` | `useFiles` — フィルタ・アップロード・変換・CRUD | 12 | ✅ |
+| `src/hooks/__tests__/use-content-search.test.ts` | `useContentSearch` — デバウンス・RPC・リセット | 8 | ✅ |
+| `src/lib/__tests__/backfill-content-text.test.ts` | `backfillContentText` — 非同期キュー・エラー継続 | 7 | ✅ |
 
-### 補助
-
-| テストファイル | テスト対象 | 主なテスト観点 |
-|--------------|-----------|--------------|
-| `src/lib/__tests__/backfill-content-text.test.ts` | `backfillContentText` | 非同期キュー処理、エラー時のリトライ |
+**合計: 40 テスト / 5 ファイル追加（Phase 全体: 91 テスト / 10 ファイル）**
 
 ---
 
-## Phase 4: コンポーネントのユニットテスト（未着手）
+## Phase 4: コンポーネントのユニットテスト ✅ 完了
 
-### ビューア（優先度高）
+`@testing-library/react` の `render` + `screen` + `userEvent` を使用。重い外部ライブラリ
+（react-pdf / xlsx / JSZip など）は `vi.mock` で置き換える。
 
-| テストファイル | テスト対象 | 主なテスト観点 |
-|--------------|-----------|--------------|
-| `src/components/file-viewer/__tests__/markdown-viewer.test.tsx` | MarkdownViewer | Markdown レンダリング、WikiLink 表示 |
-| `src/components/file-viewer/__tests__/text-viewer.test.tsx` | TextViewer | テキスト表示、エンコーディング |
-| `src/components/file-viewer/__tests__/image-viewer.test.tsx` | ImageViewer | 画像表示、ズーム |
-| `src/components/file-viewer/__tests__/pdf-viewer.test.tsx` | PdfViewer | PDF 読み込み（mock） |
-| `src/components/file-viewer/__tests__/excel-viewer.test.tsx` | ExcelViewer | Excel データ表示（mock） |
-| `src/components/file-viewer/__tests__/pptx-viewer.test.tsx` | PptxViewer | 変換・表示フロー（mock） |
+### ビューア
 
-### レイアウト・ダイアログ（優先度中）
+| テストファイル | テスト対象 | テスト数 | 状態 |
+|--------------|-----------|---------|------|
+| `src/components/file-viewer/__tests__/text-viewer.test.tsx` | TextViewer — ダウンロード・表示・エラー | 3 | ✅ |
+| `src/components/file-viewer/__tests__/image-viewer.test.tsx` | ImageViewer — createObjectURL・表示・エラー | 3 | ✅ |
+| `src/components/file-viewer/__tests__/markdown-viewer.test.tsx` | MarkdownViewer — MD レンダリング・リンク・エラー | 4 | ✅ |
+| `src/components/file-viewer/__tests__/excel-viewer.test.tsx` | ExcelViewer — テーブル表示・シートタブ切替 | 5 | ✅ |
+| `src/components/file-viewer/__tests__/pdf-viewer.test.tsx` | PdfViewer — ページ遷移・初期ページ・ズーム操作 | 6 | ✅ |
+| `src/components/file-viewer/__tests__/pptx-viewer.test.tsx` | PptxViewer — スライドパース・遷移・エラー | 5 | ✅ |
 
-| テストファイル | テスト対象 | 主なテスト観点 |
-|--------------|-----------|--------------|
-| `src/components/__tests__/sidebar.test.tsx` | Sidebar | フォルダツリー表示、D&D、検索 |
-| `src/components/__tests__/upload-dialog.test.tsx` | UploadDialog | ファイル選択、アップロードフロー |
-| `src/components/__tests__/content-search-dialog.test.tsx` | ContentSearchDialog | 検索 UI、キーボードショートカット |
-| `src/components/__tests__/protected-route.test.tsx` | ProtectedRoute | 認証ガード、リダイレクト |
+### レイアウト・ダイアログ
+
+| テストファイル | テスト対象 | テスト数 | 状態 |
+|--------------|-----------|---------|------|
+| `src/components/__tests__/protected-route.test.tsx` | ProtectedRoute — 認証ガード・リダイレクト | 3 | ✅ |
+| `src/components/__tests__/upload-dialog.test.tsx` | UploadDialog — ダイアログ開閉・D&Dアップロード・エラー | 4 | ✅ |
+| `src/components/__tests__/content-search-dialog.test.tsx` | ContentSearchDialog — 結果表示・ハイライト・キー操作 | 7 | ✅ |
+| `src/components/layout/__tests__/sidebar.test.tsx` | Sidebar — フォルダ/ファイル表示・検索・作成・折りたたみ | 8 | ✅ |
+
+**合計: 48 テスト / 10 ファイル追加（Phase 全体: 139 テスト / 20 ファイル）**
+
+### 注意点
+
+- MarkdownViewer の **WikiLink 機能は未テスト**：react-markdown v10 のデフォルト URL フィルターが `wikilink://` スキームを空文字に置換するため、コンポーネント経由でのテストが成立しない。本番での動作確認とコンポーネント実装（`urlTransform` 追加など）の見直しが別途必要。
 
 ---
 
