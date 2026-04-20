@@ -10,6 +10,7 @@ import { ImageViewer } from "@/components/file-viewer/image-viewer"
 import { TextViewer } from "@/components/file-viewer/text-viewer"
 import { UploadDialog } from "@/components/upload-dialog"
 import { ContentSearchDialog } from "@/components/content-search-dialog"
+import { ViewerErrorBoundary } from "@/components/viewer-error-boundary"
 import { Button } from "@/components/ui/button"
 import { useFolders } from "@/hooks/use-folders"
 import { useFiles } from "@/hooks/use-files"
@@ -208,19 +209,21 @@ export function DashboardPage() {
           </div>
           <div ref={contentRef} className="relative flex-1 overflow-auto">
             {selectedFile ? (
-              selectedFile.type === "md" ? (
-                <MarkdownViewer file={selectedFile} allFiles={allFiles} onNavigateToFile={handleNavigateToFile} />
-              ) : selectedFile.type === "xlsx" ? (
-                <ExcelViewer file={selectedFile} />
-              ) : selectedFile.type === "pptx" ? (
-                <PptxViewer file={selectedFile} />
-              ) : selectedFile.type === "image" ? (
-                <ImageViewer file={selectedFile} />
-              ) : selectedFile.type === "txt" ? (
-                <TextViewer file={selectedFile} />
-              ) : (
-                <PdfViewer file={selectedFile} initialPage={pdfInitialPage} highlightQuery={pdfHighlightQuery} />
-              )
+              <ViewerErrorBoundary resetKey={selectedFile.id}>
+                {selectedFile.type === "md" ? (
+                  <MarkdownViewer file={selectedFile} allFiles={allFiles} onNavigateToFile={handleNavigateToFile} />
+                ) : selectedFile.type === "xlsx" ? (
+                  <ExcelViewer file={selectedFile} />
+                ) : selectedFile.type === "pptx" ? (
+                  <PptxViewer file={selectedFile} />
+                ) : selectedFile.type === "image" ? (
+                  <ImageViewer file={selectedFile} />
+                ) : selectedFile.type === "txt" ? (
+                  <TextViewer file={selectedFile} />
+                ) : (
+                  <PdfViewer file={selectedFile} initialPage={pdfInitialPage} highlightQuery={pdfHighlightQuery} />
+                )}
+              </ViewerErrorBoundary>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
                 <p>Select a file to view its contents</p>

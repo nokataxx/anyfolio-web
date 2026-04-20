@@ -12,7 +12,7 @@
 |------|------|------|
 | ~~テストがない~~ | ~~単体・E2Eテストがゼロ。Vitest + Playwright の導入推奨~~ | ✅ ユニットテスト 139件導入（E2E は未着手） |
 | ~~CI/CDがない~~ | ~~GitHub Actions で lint / build / test の自動化が必要~~ | ✅ `.github/workflows/ci.yml` 追加（PR・main push で lint / build / test） |
-| Error Boundaryがない | ビューアがクラッシュするとアプリ全体が白画面になる | ⏳ 未着手 |
+| ~~Error Boundaryがない~~ | ~~ビューアがクラッシュするとアプリ全体が白画面になる~~ | ✅ `ViewerErrorBoundary` 追加（ビューア単位でフォールバックUI、「Try again」で再試行） |
 | バンドルサイズが大きい | メインチャンク 2.87MB。ビューアのコード分割（lazy import）が必要 | ⏳ 未着手 |
 
 ### 中優先度
@@ -45,6 +45,7 @@
 - **リファクタリング**: `pptx-to-pdf.ts` から純粋ヘルパーを `pptx-helpers.ts` に分離（テスト容易性向上）
 - **Lintエラー修正**: `button.tsx` の `buttonVariants` を `button-variants.ts` に分離、`image-viewer.tsx` の useEffect 依存修正ほか
 - **CI/CD**: GitHub Actions ワークフロー追加（[.github/workflows/ci.yml](../.github/workflows/ci.yml)）— PR および main への push で `npm run lint` / `npm run build` / `npm test` を自動実行
+- **Error Boundary**: `ViewerErrorBoundary` を追加し、ダッシュボードの各ビューアを包む。ビューアがクラッシュしてもアプリ全体は生存、ファイル切り替え時は自動リセット、ユーザーは「Try again」で再試行可能
 
 ### ⏳ 未着手（推奨アクションの残り）
 
@@ -59,19 +60,14 @@
 - Vercel 側の GitHub 連携で PR プレビューを自動生成
 - GitHub Actions とは独立して設定する
 
-### 3. Error Boundary の追加
-
-- React Error Boundary をビューア周りに設置
-- クラッシュ時にフォールバックUIを表示し、アプリ全体の白画面を防ぐ
-
-### 4. バンドルサイズの最適化
+### 3. バンドルサイズの最適化
 
 - **React.lazy + Suspense** で各ビューアをコード分割
   - MarkdownViewer, PdfViewer, ExcelViewer, TextViewer, ImageViewer, PptxViewer
 - PDF Worker の遅延読み込み
 - `npm run build` 後のチャンクサイズを500KB以下に抑える
 
-### 5. Sidebar リファクタリング
+### 4. Sidebar リファクタリング
 
 - 現在の637行を以下に分割:
   - `FolderItem` — 単一フォルダの表示・編集・D&D
@@ -80,10 +76,10 @@
   - `SidebarSearch` — 検索UI
   - `Sidebar` — 統合コンポーネント
 
-### 6. 監視 / エラーログ
+### 5. 監視 / エラーログ
 
 - Sentry 等の導入でプロダクションエラーを把握
 
-### 7. 大量ファイル対応
+### 6. 大量ファイル対応
 
 - `useAllFiles()` のページング or 仮想スクロール化（1万件超でのメモリ対策）
