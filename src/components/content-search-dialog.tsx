@@ -22,7 +22,6 @@ type ContentSearchDialogProps = {
 function fileIcon(type: FileRecord["type"]) {
   switch (type) {
     case "md":
-    case "txt":
       return <FileText className="size-4 shrink-0 text-muted-foreground" />
     case "xlsx":
       return <FileSpreadsheet className="size-4 shrink-0 text-muted-foreground" />

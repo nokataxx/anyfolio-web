@@ -1,10 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { ArrowUp } from "lucide-react"
+import { ArrowUp, Eye, Pencil, Save } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
 import { UploadDialog } from "@/components/upload-dialog"
 import { ContentSearchDialog } from "@/components/content-search-dialog"
 import { ViewerErrorBoundary } from "@/components/viewer-error-boundary"
+import type {
+  MarkdownViewerHandle,
+  MarkdownViewerStatus,
+} from "@/components/file-viewer/markdown-viewer"
 
 // Viewers carry heavy deps (react-pdf, xlsx, jszip, etc.) — load on demand
 const MarkdownViewer = lazy(() =>
@@ -21,9 +25,6 @@ const PptxViewer = lazy(() =>
 )
 const ImageViewer = lazy(() =>
   import("@/components/file-viewer/image-viewer").then((m) => ({ default: m.ImageViewer })),
-)
-const TextViewer = lazy(() =>
-  import("@/components/file-viewer/text-viewer").then((m) => ({ default: m.TextViewer })),
 )
 
 function ViewerFallback() {
@@ -51,6 +52,14 @@ export function DashboardPage() {
 
   const contentRef = useRef<HTMLDivElement>(null)
   const [showScrollTop, setShowScrollTop] = useState(false)
+
+  const markdownViewerRef = useRef<MarkdownViewerHandle>(null)
+  const [markdownStatus, setMarkdownStatus] = useState<MarkdownViewerStatus>({
+    mode: "view",
+    isDirty: false,
+    saving: false,
+    ready: false,
+  })
 
   const handleScroll = useCallback(() => {
     const el = contentRef.current
@@ -146,7 +155,7 @@ export function DashboardPage() {
   }, [highlightTrigger])
 
   const { folders, createFolder, deleteFolder, renameFolder, moveFolder } = useFolders()
-  const { files, uploadFile, deleteFile, renameFile, moveFile } = useFiles(selectedFolderId)
+  const { files, uploadFile, deleteFile, renameFile, moveFile, updateFileContent } = useFiles(selectedFolderId)
   const { allFiles, refetch: refetchAllFiles } = useAllFiles()
 
   const handleSelectFolder = (id: string | null) => {
@@ -195,8 +204,19 @@ export function DashboardPage() {
     return await moveFolder(folderId, newParentId)
   }
 
+  const handleUpdateFileContent: typeof updateFileContent = async (file, content, options) => {
+    const result = await updateFileContent(file, content, options)
+    if (result.error === null) {
+      await refetchAllFiles()
+      if (selectedFile?.id === file.id) {
+        setSelectedFile({ ...file, updated_at: result.updatedAt })
+      }
+    }
+    return result
+  }
+
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-dvh flex-col bg-background">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -223,6 +243,39 @@ export function DashboardPage() {
                 ? selectedFile.name.replace(/\.[^.]+$/, "")
                 : "Select a file to view"}
             </span>
+            {selectedFile?.type === "md" && (
+              markdownStatus.mode === "view" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => markdownViewerRef.current?.enterEdit()}
+                  disabled={!markdownStatus.ready}
+                >
+                  <Pencil className="size-4" />
+                  Edit
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => markdownViewerRef.current?.tryExitEdit()}
+                    disabled={markdownStatus.saving}
+                  >
+                    <Eye className="size-4" />
+                    View
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => markdownViewerRef.current?.save()}
+                    disabled={!markdownStatus.isDirty || markdownStatus.saving}
+                  >
+                    <Save className="size-4" />
+                    {markdownStatus.saving ? "Saving..." : "Save"}
+                  </Button>
+                </>
+              )
+            )}
             <UploadDialog folderId={selectedFolderId} onUpload={async (file, fId) => {
               const result = await uploadFile(file, fId)
               if (!result.error) await refetchAllFiles()
@@ -234,15 +287,20 @@ export function DashboardPage() {
               <ViewerErrorBoundary resetKey={selectedFile.id}>
                 <Suspense fallback={<ViewerFallback />}>
                   {selectedFile.type === "md" ? (
-                    <MarkdownViewer file={selectedFile} allFiles={allFiles} onNavigateToFile={handleNavigateToFile} />
+                    <MarkdownViewer
+                      ref={markdownViewerRef}
+                      file={selectedFile}
+                      allFiles={allFiles}
+                      onNavigateToFile={handleNavigateToFile}
+                      onSaveContent={handleUpdateFileContent}
+                      onStatusChange={setMarkdownStatus}
+                    />
                   ) : selectedFile.type === "xlsx" ? (
                     <ExcelViewer file={selectedFile} />
                   ) : selectedFile.type === "pptx" ? (
                     <PptxViewer file={selectedFile} />
                   ) : selectedFile.type === "image" ? (
                     <ImageViewer file={selectedFile} />
-                  ) : selectedFile.type === "txt" ? (
-                    <TextViewer file={selectedFile} />
                   ) : (
                     <PdfViewer file={selectedFile} initialPage={pdfInitialPage} highlightQuery={pdfHighlightQuery} />
                   )}

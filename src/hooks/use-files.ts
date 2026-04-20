@@ -53,19 +53,27 @@ export function useFiles(folderId: string | null) {
       return { error: "Only .md, .pdf, .xlsx/.xls, .pptx/.ppt, .docx/.doc, .txt, and image files are supported" }
     }
 
-    // Convert PPTX/PPT to PDF before uploading
     let uploadTarget = file
-    let finalType: "md" | "pdf" | "xlsx" | "pptx" | "image" | "txt" = fileType as "md" | "pdf" | "xlsx" | "pptx" | "image" | "txt"
+    let finalType: "md" | "pdf" | "xlsx" | "pptx" | "image" = fileType === "txt" || fileType === "docx"
+      ? "md"
+      : (fileType as "md" | "pdf" | "xlsx" | "pptx" | "image")
     let finalExt = ext
     if (fileType === "docx") {
       try {
-        const { convertDocxToTxt } = await import("@/lib/docx-to-txt")
-        uploadTarget = await convertDocxToTxt(file)
-        finalType = "txt"
-        finalExt = "txt"
+        if (ext === "docx") {
+          const { convertDocxToMd } = await import("@/lib/docx-to-md")
+          uploadTarget = await convertDocxToMd(file)
+        } else {
+          const { convertDocxToTxt } = await import("@/lib/docx-to-txt")
+          const txtFile = await convertDocxToTxt(file)
+          const mdName = txtFile.name.replace(/\.txt$/i, ".md")
+          uploadTarget = new File([txtFile], mdName, { type: "text/markdown" })
+        }
+        finalType = "md"
+        finalExt = "md"
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Unknown error"
-        return { error: `Failed to convert Word to text: ${msg}` }
+        return { error: `Failed to convert Word document: ${msg}` }
       }
     }
     if (fileType === "pptx") {
@@ -78,6 +86,12 @@ export function useFiles(folderId: string | null) {
         const msg = e instanceof Error ? e.message : "Unknown error"
         return { error: `Failed to convert PowerPoint to PDF: ${msg}` }
       }
+    }
+    if (fileType === "txt") {
+      const mdName = file.name.replace(/\.txt$/i, ".md")
+      uploadTarget = new File([file], mdName, { type: "text/markdown" })
+      finalType = "md"
+      finalExt = "md"
     }
 
     const storagePath = folderId
@@ -92,9 +106,11 @@ export function useFiles(folderId: string | null) {
 
     const displayName = fileType === "pptx"
       ? file.name.replace(/\.pptx?$/i, ".pdf")
-      : fileType === "docx"
-        ? file.name.replace(/\.docx?$/i, ".txt")
-        : file.name
+      : ext === "docx" || ext === "doc"
+        ? file.name.replace(/\.docx?$/i, ".md")
+        : ext === "txt"
+          ? file.name.replace(/\.txt$/i, ".md")
+          : file.name
 
     // Extract text content for fulltext search
     let contentText: string | null = null
@@ -169,5 +185,68 @@ export function useFiles(folderId: string | null) {
     return { error: null }
   }
 
-  return { files, loading, uploadFile, deleteFile, renameFile, moveFile, refetch: fetchFiles }
+  const updateFileContent = async (
+    fileRecord: FileRecord,
+    content: string,
+    options: { expectedUpdatedAt: string; overwrite?: boolean },
+  ): Promise<
+    | { error: null; updatedAt: string }
+    | { error: string; conflict?: boolean; latestUpdatedAt?: string }
+  > => {
+    if (!options.overwrite) {
+      const { data: current, error: fetchError } = await supabase
+        .from("anyfolio_files")
+        .select("updated_at")
+        .eq("id", fileRecord.id)
+        .single()
+      if (fetchError) return { error: fetchError.message }
+      if (current.updated_at !== options.expectedUpdatedAt) {
+        return {
+          error: "CONFLICT",
+          conflict: true,
+          latestUpdatedAt: current.updated_at,
+        }
+      }
+    }
+
+    const blob = new Blob([content], { type: "text/markdown" })
+    const { error: uploadError } = await supabase.storage
+      .from("anyfolio-files")
+      .upload(fileRecord.storage_path, blob, {
+        upsert: true,
+        contentType: "text/markdown",
+      })
+    if (uploadError) return { error: uploadError.message }
+
+    let contentText: string | null = null
+    try {
+      const { extractTextFromBlob } = await import("@/lib/text-extraction")
+      const extraction = await extractTextFromBlob(blob, fileRecord.type)
+      if (extraction.text) contentText = extraction.text
+    } catch {
+      // Non-fatal: storage is updated but search index may be stale
+    }
+
+    const { data: updated, error: dbError } = await supabase
+      .from("anyfolio_files")
+      .update({ content_text: contentText, updated_at: new Date().toISOString() })
+      .eq("id", fileRecord.id)
+      .select("updated_at")
+      .single()
+    if (dbError) return { error: dbError.message }
+
+    await fetchFiles()
+    return { error: null, updatedAt: (updated as { updated_at: string }).updated_at }
+  }
+
+  return {
+    files,
+    loading,
+    uploadFile,
+    deleteFile,
+    renameFile,
+    moveFile,
+    updateFileContent,
+    refetch: fetchFiles,
+  }
 }

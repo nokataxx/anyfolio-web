@@ -25,6 +25,13 @@ vi.mock("@/lib/docx-to-txt", () => ({
   }),
 }))
 
+vi.mock("@/lib/docx-to-md", () => ({
+  convertDocxToMd: vi.fn(async (file: File) => {
+    const mdName = file.name.replace(/\.docx?$/i, ".md")
+    return new File(["# markdown"], mdName, { type: "text/markdown" })
+  }),
+}))
+
 vi.mock("@/lib/text-extraction", () => ({
   extractTextFromBlob: vi.fn().mockResolvedValue({ text: "extracted" }),
 }))
@@ -130,7 +137,7 @@ describe("useFiles", () => {
     expect(insertedRow.content_text).toBe("extracted")
   })
 
-  it("uploadFile: docx converts to txt and renames", async () => {
+  it("uploadFile: docx converts to md and renames", async () => {
     const { result } = renderHook(() => useFiles(null))
     await waitFor(() => expect(result.current.files.length).toBeGreaterThan(0))
 
@@ -145,9 +152,55 @@ describe("useFiles", () => {
     const insertedRow = insertBuilder?.insert.mock.calls[0][0] as {
       name: string
       type: string
+      storage_path: string
     }
-    expect(insertedRow.name).toBe("report.txt")
-    expect(insertedRow.type).toBe("txt")
+    expect(insertedRow.name).toBe("report.md")
+    expect(insertedRow.type).toBe("md")
+    expect(insertedRow.storage_path).toMatch(/\.md$/)
+  })
+
+  it("uploadFile: txt converts to md and renames", async () => {
+    const { result } = renderHook(() => useFiles(null))
+    await waitFor(() => expect(result.current.files.length).toBeGreaterThan(0))
+
+    const txtFile = new File(["plain content"], "memo.txt", { type: "text/plain" })
+    await act(async () => {
+      await result.current.uploadFile(txtFile, null)
+    })
+
+    const insertBuilder = mockState
+      .getTableBuilders()
+      .find((b) => b.insert.mock.calls.length > 0)
+    const insertedRow = insertBuilder?.insert.mock.calls[0][0] as {
+      name: string
+      type: string
+      storage_path: string
+    }
+    expect(insertedRow.name).toBe("memo.md")
+    expect(insertedRow.type).toBe("md")
+    expect(insertedRow.storage_path).toMatch(/\.md$/)
+  })
+
+  it("uploadFile: legacy .doc converts to md via text extraction", async () => {
+    const { result } = renderHook(() => useFiles(null))
+    await waitFor(() => expect(result.current.files.length).toBeGreaterThan(0))
+
+    const docFile = new File(["doc bytes"], "legacy.doc")
+    await act(async () => {
+      await result.current.uploadFile(docFile, null)
+    })
+
+    const insertBuilder = mockState
+      .getTableBuilders()
+      .find((b) => b.insert.mock.calls.length > 0)
+    const insertedRow = insertBuilder?.insert.mock.calls[0][0] as {
+      name: string
+      type: string
+      storage_path: string
+    }
+    expect(insertedRow.name).toBe("legacy.md")
+    expect(insertedRow.type).toBe("md")
+    expect(insertedRow.storage_path).toMatch(/\.md$/)
   })
 
   it("uploadFile: pptx converts to pdf and renames", async () => {
@@ -264,5 +317,96 @@ describe("useFiles", () => {
       .find((b) => b.update.mock.calls.length > 0)
     expect(updateBuilder?.update).toHaveBeenCalledWith({ folder_id: "folder-2" })
     expect(updateBuilder?.eq).toHaveBeenCalledWith("id", "file-1")
+  })
+
+  it("updateFileContent: saves when updated_at matches", async () => {
+    const { result } = renderHook(() => useFiles(null))
+    await waitFor(() => expect(result.current.files.length).toBeGreaterThan(0))
+
+    mockState.setNextResponse({
+      data: { updated_at: "2026-01-01T00:00:00Z" },
+      error: null,
+    })
+
+    let saveResult: Awaited<ReturnType<typeof result.current.updateFileContent>> | null = null
+    await act(async () => {
+      saveResult = await result.current.updateFileContent(
+        sampleFiles[0],
+        "# edited",
+        { expectedUpdatedAt: "2026-01-01T00:00:00Z" },
+      )
+    })
+
+    expect(saveResult!.error).toBeNull()
+    expect(mockState.supabase.storage.upload).toHaveBeenCalledWith(
+      sampleFiles[0].storage_path,
+      expect.any(Blob),
+      expect.objectContaining({ upsert: true, contentType: "text/markdown" }),
+    )
+    const updateBuilder = mockState
+      .getTableBuilders()
+      .find((b) => b.update.mock.calls.length > 0)
+    const updatePayload = updateBuilder?.update.mock.calls[0][0] as {
+      content_text: string
+      updated_at: string
+    }
+    expect(updatePayload.content_text).toBe("extracted")
+    expect(updatePayload.updated_at).toBeTruthy()
+  })
+
+  it("updateFileContent: returns conflict when updated_at differs", async () => {
+    const { result } = renderHook(() => useFiles(null))
+    await waitFor(() => expect(result.current.files.length).toBeGreaterThan(0))
+
+    mockState.setNextResponse({
+      data: { updated_at: "2026-02-02T00:00:00Z" },
+      error: null,
+    })
+
+    let saveResult: Awaited<ReturnType<typeof result.current.updateFileContent>> | null = null
+    await act(async () => {
+      saveResult = await result.current.updateFileContent(
+        sampleFiles[0],
+        "# edited",
+        { expectedUpdatedAt: "2026-01-01T00:00:00Z" },
+      )
+    })
+
+    const conflictResult = saveResult as unknown as {
+      error: string
+      conflict?: boolean
+      latestUpdatedAt?: string
+    }
+    expect(conflictResult.error).toBe("CONFLICT")
+    expect(conflictResult.conflict).toBe(true)
+    expect(mockState.supabase.storage.upload).not.toHaveBeenCalled()
+  })
+
+  it("updateFileContent: overwrite skips conflict check", async () => {
+    const { result } = renderHook(() => useFiles(null))
+    await waitFor(() => expect(result.current.files.length).toBeGreaterThan(0))
+
+    const beforeFromCount = mockState.getTableBuilders().length
+
+    await act(async () => {
+      await result.current.updateFileContent(sampleFiles[0], "# edited", {
+        expectedUpdatedAt: "2026-01-01T00:00:00Z",
+        overwrite: true,
+      })
+    })
+
+    // With overwrite, the pre-update SELECT(updated_at).single() (no update()) is skipped.
+    // The final UPDATE-then-SELECT chain is still expected.
+    const preconditionSelects = mockState
+      .getTableBuilders()
+      .slice(beforeFromCount)
+      .filter(
+        (b) =>
+          b.select.mock.calls.length > 0 &&
+          b.single.mock.calls.length > 0 &&
+          b.update.mock.calls.length === 0,
+      )
+    expect(preconditionSelects).toHaveLength(0)
+    expect(mockState.supabase.storage.upload).toHaveBeenCalled()
   })
 })

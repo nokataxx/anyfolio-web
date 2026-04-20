@@ -60,12 +60,6 @@ describe("text-extraction", () => {
       expect(result.text).toContain("Hello World")
     })
 
-    it("extracts text from txt files", async () => {
-      const blob = new Blob(["plain text content"], { type: "text/plain" })
-      const result = await extractTextFromBlob(blob, "txt")
-      expect(result.text).toContain("plain text content")
-    })
-
     it("returns empty string for unsupported file types", async () => {
       const blob = new Blob(["data"])
       const result = await extractTextFromBlob(blob, "unknown")

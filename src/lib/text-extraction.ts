@@ -31,8 +31,7 @@ export async function extractTextFromBlob(
   fileType: string,
 ): Promise<ExtractionResult> {
   switch (fileType) {
-    case "md":
-    case "txt": {
+    case "md": {
       const buffer = await blob.arrayBuffer()
       const bytes = new Uint8Array(buffer)
       const detected = Encoding.detect(bytes)
@@ -77,8 +76,7 @@ export async function extractText(file: FileRecord): Promise<string> {
   let text: string
 
   switch (file.type) {
-    case "md":
-    case "txt": {
+    case "md": {
       const buffer = await data.arrayBuffer()
       const bytes = new Uint8Array(buffer)
       const detected = Encoding.detect(bytes)

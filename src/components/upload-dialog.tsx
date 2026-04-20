@@ -23,7 +23,6 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
   const [error, setError] = useState<string | null>(null)
 
   const isPptx = (name: string) => /\.pptx?$/i.test(name)
-  const isDocx = (name: string) => /\.docx?$/i.test(name)
 
   const handleFiles = useCallback(
     async (fileList: FileList) => {
@@ -34,8 +33,8 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
       for (const file of Array.from(fileList)) {
         if (isPptx(file.name)) {
           setStatusMessage(`Converting ${file.name} to PDF...`)
-        } else if (isDocx(file.name)) {
-          setStatusMessage(`Converting ${file.name} to text...`)
+        } else if (/\.(docx?|txt)$/i.test(file.name)) {
+          setStatusMessage(`Converting ${file.name} to Markdown...`)
         } else {
           setStatusMessage(`Uploading ${file.name}...`)
         }
@@ -68,7 +67,7 @@ export function UploadDialog({ folderId, onUpload }: UploadDialogProps) {
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
             Upload .md, .pdf, .xlsx, .pptx, .docx, .txt, or image files to the selected folder.
-            PowerPoint files are converted to PDF, Word files are converted to text.
+            PowerPoint files are converted to PDF; Word (.docx/.doc) and .txt files are converted to Markdown.
           </DialogDescription>
         </DialogHeader>
         <div

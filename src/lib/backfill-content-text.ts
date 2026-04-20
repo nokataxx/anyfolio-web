@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase"
 import { extractText, getPdfPageTexts } from "@/lib/text-extraction"
 import type { FileRecord } from "@/lib/types"
 
-const SEARCHABLE_TYPES = new Set(["md", "txt", "pdf", "xlsx"])
+const SEARCHABLE_TYPES = new Set(["md", "pdf", "xlsx"])
 const MAX_CONCURRENT = 3
 
 let backfillRunning = false
