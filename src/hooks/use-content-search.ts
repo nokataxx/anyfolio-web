@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { backfillContentText } from "@/lib/backfill-content-text"
 import type { FileRecord, Folder } from "@/lib/types"
 
 export type SearchResult = {
@@ -41,10 +40,13 @@ export function useContentSearch(
     return m
   }, [folders])
 
-  // Backfill content_text for existing files (runs once per session)
+  // Backfill content_text for existing files (runs once per session).
+  // Dynamically import so text-extraction deps (pdfjs, xlsx) are not in the main bundle.
   useEffect(() => {
     if (enabled && allFiles.length > 0) {
-      backfillContentText(allFiles)
+      import("@/lib/backfill-content-text").then(({ backfillContentText }) =>
+        backfillContentText(allFiles),
+      )
     }
   }, [enabled, allFiles])
 

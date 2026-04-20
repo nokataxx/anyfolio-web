@@ -1,16 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { ArrowUp } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
-import { MarkdownViewer } from "@/components/file-viewer/markdown-viewer"
-import { PdfViewer } from "@/components/file-viewer/pdf-viewer"
-import { ExcelViewer } from "@/components/file-viewer/excel-viewer"
-import { PptxViewer } from "@/components/file-viewer/pptx-viewer"
-import { ImageViewer } from "@/components/file-viewer/image-viewer"
-import { TextViewer } from "@/components/file-viewer/text-viewer"
 import { UploadDialog } from "@/components/upload-dialog"
 import { ContentSearchDialog } from "@/components/content-search-dialog"
 import { ViewerErrorBoundary } from "@/components/viewer-error-boundary"
+
+// Viewers carry heavy deps (react-pdf, xlsx, jszip, etc.) — load on demand
+const MarkdownViewer = lazy(() =>
+  import("@/components/file-viewer/markdown-viewer").then((m) => ({ default: m.MarkdownViewer })),
+)
+const PdfViewer = lazy(() =>
+  import("@/components/file-viewer/pdf-viewer").then((m) => ({ default: m.PdfViewer })),
+)
+const ExcelViewer = lazy(() =>
+  import("@/components/file-viewer/excel-viewer").then((m) => ({ default: m.ExcelViewer })),
+)
+const PptxViewer = lazy(() =>
+  import("@/components/file-viewer/pptx-viewer").then((m) => ({ default: m.PptxViewer })),
+)
+const ImageViewer = lazy(() =>
+  import("@/components/file-viewer/image-viewer").then((m) => ({ default: m.ImageViewer })),
+)
+const TextViewer = lazy(() =>
+  import("@/components/file-viewer/text-viewer").then((m) => ({ default: m.TextViewer })),
+)
+
+function ViewerFallback() {
+  return (
+    <div className="flex h-full items-center justify-center p-8 text-muted-foreground">
+      Loading viewer…
+    </div>
+  )
+}
 import { Button } from "@/components/ui/button"
 import { useFolders } from "@/hooks/use-folders"
 import { useFiles } from "@/hooks/use-files"
@@ -210,19 +232,21 @@ export function DashboardPage() {
           <div ref={contentRef} className="relative flex-1 overflow-auto">
             {selectedFile ? (
               <ViewerErrorBoundary resetKey={selectedFile.id}>
-                {selectedFile.type === "md" ? (
-                  <MarkdownViewer file={selectedFile} allFiles={allFiles} onNavigateToFile={handleNavigateToFile} />
-                ) : selectedFile.type === "xlsx" ? (
-                  <ExcelViewer file={selectedFile} />
-                ) : selectedFile.type === "pptx" ? (
-                  <PptxViewer file={selectedFile} />
-                ) : selectedFile.type === "image" ? (
-                  <ImageViewer file={selectedFile} />
-                ) : selectedFile.type === "txt" ? (
-                  <TextViewer file={selectedFile} />
-                ) : (
-                  <PdfViewer file={selectedFile} initialPage={pdfInitialPage} highlightQuery={pdfHighlightQuery} />
-                )}
+                <Suspense fallback={<ViewerFallback />}>
+                  {selectedFile.type === "md" ? (
+                    <MarkdownViewer file={selectedFile} allFiles={allFiles} onNavigateToFile={handleNavigateToFile} />
+                  ) : selectedFile.type === "xlsx" ? (
+                    <ExcelViewer file={selectedFile} />
+                  ) : selectedFile.type === "pptx" ? (
+                    <PptxViewer file={selectedFile} />
+                  ) : selectedFile.type === "image" ? (
+                    <ImageViewer file={selectedFile} />
+                  ) : selectedFile.type === "txt" ? (
+                    <TextViewer file={selectedFile} />
+                  ) : (
+                    <PdfViewer file={selectedFile} initialPage={pdfInitialPage} highlightQuery={pdfHighlightQuery} />
+                  )}
+                </Suspense>
               </ViewerErrorBoundary>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">

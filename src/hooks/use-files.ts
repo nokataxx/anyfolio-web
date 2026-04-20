@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { convertPptxToPdf } from "@/lib/pptx-to-pdf"
-import { convertDocxToTxt } from "@/lib/docx-to-txt"
-import { extractTextFromBlob } from "@/lib/text-extraction"
 import type { FileRecord } from "@/lib/types"
 
 async function loadFiles(folderId: string | null) {
@@ -62,6 +59,7 @@ export function useFiles(folderId: string | null) {
     let finalExt = ext
     if (fileType === "docx") {
       try {
+        const { convertDocxToTxt } = await import("@/lib/docx-to-txt")
         uploadTarget = await convertDocxToTxt(file)
         finalType = "txt"
         finalExt = "txt"
@@ -72,6 +70,7 @@ export function useFiles(folderId: string | null) {
     }
     if (fileType === "pptx") {
       try {
+        const { convertPptxToPdf } = await import("@/lib/pptx-to-pdf")
         uploadTarget = await convertPptxToPdf(file)
         finalType = "pdf"
         finalExt = "pdf"
@@ -101,6 +100,7 @@ export function useFiles(folderId: string | null) {
     let contentText: string | null = null
     let contentPages: string[] | null = null
     try {
+      const { extractTextFromBlob } = await import("@/lib/text-extraction")
       const extraction = await extractTextFromBlob(uploadTarget, finalType)
       if (extraction.text) contentText = extraction.text
       if (extraction.pages) contentPages = extraction.pages

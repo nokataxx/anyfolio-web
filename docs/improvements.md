@@ -13,7 +13,7 @@
 | ~~テストがない~~ | ~~単体・E2Eテストがゼロ。Vitest + Playwright の導入推奨~~ | ✅ ユニットテスト 139件導入（E2E は未着手） |
 | ~~CI/CDがない~~ | ~~GitHub Actions で lint / build / test の自動化が必要~~ | ✅ `.github/workflows/ci.yml` 追加（PR・main push で lint / build / test） |
 | ~~Error Boundaryがない~~ | ~~ビューアがクラッシュするとアプリ全体が白画面になる~~ | ✅ `ViewerErrorBoundary` 追加（ビューア単位でフォールバックUI、「Try again」で再試行） |
-| バンドルサイズが大きい | メインチャンク 2.87MB。ビューアのコード分割（lazy import）が必要 | ⏳ 未着手 |
+| ~~バンドルサイズが大きい~~ | ~~メインチャンク 2.87MB。ビューアのコード分割（lazy import）が必要~~ | ✅ 2.87MB → 600KB（gzip 858KB → 177KB、約80%削減）。ビューアと変換処理を動的 import に変更 |
 
 ### 中優先度
 
@@ -46,6 +46,7 @@
 - **Lintエラー修正**: `button.tsx` の `buttonVariants` を `button-variants.ts` に分離、`image-viewer.tsx` の useEffect 依存修正ほか
 - **CI/CD**: GitHub Actions ワークフロー追加（[.github/workflows/ci.yml](../.github/workflows/ci.yml)）— PR および main への push で `npm run lint` / `npm run build` / `npm test` を自動実行
 - **Error Boundary**: `ViewerErrorBoundary` を追加し、ダッシュボードの各ビューアを包む。ビューアがクラッシュしてもアプリ全体は生存、ファイル切り替え時は自動リセット、ユーザーは「Try again」で再試行可能
+- **バンドルサイズ最適化**: ビューア6種を `React.lazy` + `Suspense` でコード分割。さらに `use-files.ts` の変換処理（pptx→pdf、docx→txt、テキスト抽出）と `backfillContentText` を動的 import に変更。結果: メイン 2.87MB → 600KB（gzip 177KB）、xlsx 重複 import 警告も解消
 
 ### ⏳ 未着手（推奨アクションの残り）
 
@@ -60,14 +61,7 @@
 - Vercel 側の GitHub 連携で PR プレビューを自動生成
 - GitHub Actions とは独立して設定する
 
-### 3. バンドルサイズの最適化
-
-- **React.lazy + Suspense** で各ビューアをコード分割
-  - MarkdownViewer, PdfViewer, ExcelViewer, TextViewer, ImageViewer, PptxViewer
-- PDF Worker の遅延読み込み
-- `npm run build` 後のチャンクサイズを500KB以下に抑える
-
-### 4. Sidebar リファクタリング
+### 3. Sidebar リファクタリング
 
 - 現在の637行を以下に分割:
   - `FolderItem` — 単一フォルダの表示・編集・D&D
@@ -76,10 +70,10 @@
   - `SidebarSearch` — 検索UI
   - `Sidebar` — 統合コンポーネント
 
-### 5. 監視 / エラーログ
+### 4. 監視 / エラーログ
 
 - Sentry 等の導入でプロダクションエラーを把握
 
-### 6. 大量ファイル対応
+### 5. 大量ファイル対応
 
 - `useAllFiles()` のページング or 仮想スクロール化（1万件超でのメモリ対策）
