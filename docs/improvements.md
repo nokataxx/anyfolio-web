@@ -14,6 +14,8 @@
 | ~~CI/CDがない~~ | ~~GitHub Actions で lint / build / test の自動化が必要~~ | ✅ `.github/workflows/ci.yml` 追加（PR・main push で lint / build / test） |
 | ~~Error Boundaryがない~~ | ~~ビューアがクラッシュするとアプリ全体が白画面になる~~ | ✅ `ViewerErrorBoundary` 追加（ビューア単位でフォールバックUI、「Try again」で再試行） |
 | ~~バンドルサイズが大きい~~ | ~~メインチャンク 2.87MB。ビューアのコード分割（lazy import）が必要~~ | ✅ 2.87MB → 600KB（gzip 858KB → 177KB、約80%削減）。ビューアと変換処理を動的 import に変更 |
+| ~~Markdown XSS 対策~~ | ~~`react-markdown` は素の設定で `<script>` / `onerror` 等の悪意ある HTML を通しうる。将来の共有機能より前に `rehype-sanitize` を導入~~ | ✅ `rehype-sanitize` を導入し、GitHub の defaultSchema ＋ `wikilink://` プロトコルを許可する schema で運用。`urlTransform` で react-markdown 側のフィルタも整合。`<script>` / on\* ハンドラ / `javascript:` URL を検証するテスト追加 |
+| アップロードサイズの client-side 上限チェック | Supabase Storage の上限（プラン依存：50MB〜5GB）超過で汎用エラーになる。アップロード前に検知して分かりやすいエラーを出す | ⏳ 未着手 |
 
 ### 中優先度
 
@@ -21,6 +23,12 @@
 |------|------|------|
 | ~~Sidebarコンポーネントが巨大~~ | ~~637行で責務が多すぎる。FolderItem / FileList 等に分割すべき~~ | ✅ 637行 → 統合103行 + 7ファイルに分割（最大179行） |
 | ~~Lintエラー~~ | ~~button.tsx の export が react-refresh 違反、image-viewer の useEffect deps 漏れ~~ | ✅ 修正済み |
+| `dashboard.tsx` の肥大化 | 400行超。viewer 状態 / Markdown・Excel 編集ステータス / ハンドラ wrapper / pendingEditRef などが混在。`useDashboardViewer` 等の hook へ切り出し | ⏳ 未着手 |
+| `refetchAllFiles` 多用による UI フリッカー | アップロード・削除・移動・リネーム・新規作成の度に全ファイル再取得。サイドバーが一瞬空になる。楽観的更新、または react-query / SWR 導入検討 | ⏳ 未着手 |
+| Supabase Realtime 非対応 | 他デバイスで削除・リネームされても反映されない。モバイルアプリ併用時にズレが出る。`supabase.channel().on('postgres_changes')` で同期 | ⏳ 未着手 |
+| 新規機能のユニットテスト未整備 | download / 新規 MD 作成 / `useTransferQueue` / `UploadButton` / `GlobalDropUpload` にテストなし。特に状態遷移を持つ `useTransferQueue` はテスト価値が高い | ⏳ 未着手 |
+| キーボードショートカットが少ない | `Cmd+K`（検索）のみ。`Cmd+N`（新規ファイル）、`Cmd+Shift+N`（新規フォルダ）、矢印キーでのサイドバー移動など、ナレッジ閲覧アプリの標準導線を追加 | ⏳ 未着手 |
+| Markdown 画像の相対参照 | `![](image.png)` 形式で vault 内の画像を参照するケースが Obsidian では一般的。WikiLink 同様のファイル名解決を実装しないと Obsidian Vault の MD が正しく表示されない可能性 | ⏳ 未検証 |
 
 ### 低優先度
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react"
-import ReactMarkdown from "react-markdown"
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkBreaks from "remark-breaks"
 import rehypeSlug from "rehype-slug"
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -49,6 +50,21 @@ type MarkdownViewerProps = {
   onStatusChange?: (status: MarkdownViewerStatus) => void
   ref?: Ref<MarkdownViewerHandle>
 }
+
+// Extend GitHub's safe schema to allow remarkWikilink's custom URL scheme.
+// Script tags, on* handlers, javascript: URLs, etc. stay stripped by default.
+const markdownSchema = {
+  ...defaultSchema,
+  protocols: {
+    ...defaultSchema.protocols,
+    href: [...(defaultSchema.protocols?.href ?? []), "wikilink"],
+  },
+}
+
+// react-markdown's default transform drops any scheme outside http/https/etc.
+// Let wikilink:// through — rehype-sanitize is the ultimate gatekeeper.
+const urlTransform = (url: string) =>
+  url.startsWith("wikilink://") ? url : defaultUrlTransform(url)
 
 function resolveWikiLink(target: string, allFiles: FileRecord[]): FileRecord | undefined {
   const normalized = target.toLowerCase().trim()
@@ -245,7 +261,8 @@ export function MarkdownViewer({
     <article className="prose prose-neutral dark:prose-invert max-w-none p-6">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks, remarkWikilink]}
-        rehypePlugins={[rehypeSlug]}
+        rehypePlugins={[rehypeSlug, [rehypeSanitize, markdownSchema]]}
+        urlTransform={urlTransform}
         components={{ a: renderLink }}
       >
         {previewBody}

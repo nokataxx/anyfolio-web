@@ -173,6 +173,62 @@ describe("MarkdownViewer", () => {
     })
   })
 
+  it("strips <script> tags and on* handlers from rendered markdown", async () => {
+    const malicious =
+      '<script>window.__pwned = true</script>\n\n' +
+      '<img src="x" onerror="window.__pwned = true">\n\n' +
+      '[click](javascript:window.__pwned=true)'
+    const blob = new Blob([malicious], { type: "text/markdown" })
+    mockState.supabase.storage.download.mockResolvedValue({
+      data: blob,
+      error: null,
+    })
+
+    // Flag any successful injection on the real window
+    const w = window as unknown as { __pwned?: boolean }
+    w.__pwned = false
+
+    const { container } = render(
+      <MarkdownViewer
+        file={fileA}
+        allFiles={[fileA]}
+        onNavigateToFile={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector("article")).toBeInTheDocument()
+    })
+
+    expect(container.querySelector("script")).toBeNull()
+    const img = container.querySelector("img")
+    if (img) expect(img.getAttribute("onerror")).toBeNull()
+    const link = container.querySelector("a[href^='javascript:']")
+    expect(link).toBeNull()
+    expect(w.__pwned).toBe(false)
+  })
+
+  it("preserves wikilink:// protocol so internal links keep working", async () => {
+    const blob = new Blob(["See [[Other]] for details"], { type: "text/markdown" })
+    mockState.supabase.storage.download.mockResolvedValue({
+      data: blob,
+      error: null,
+    })
+
+    render(
+      <MarkdownViewer
+        file={fileA}
+        allFiles={[fileA, fileB]}
+        onNavigateToFile={vi.fn()}
+      />,
+    )
+
+    // Resolved wikilinks render as a button via the `a` component override
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Other" })).toBeInTheDocument()
+    })
+  })
+
   it("renders download error", async () => {
     mockState.supabase.storage.download.mockResolvedValue({
       data: null,
