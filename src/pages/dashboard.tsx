@@ -3,6 +3,9 @@ import { ArrowUp, Eye, Menu, Pencil, Save } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
 import { UploadDialog } from "@/components/upload-dialog"
+import { GlobalDropUpload } from "@/components/global-drop-upload"
+import { UploadStatusBadge } from "@/components/upload-status-badge"
+import { useUploadQueue } from "@/hooks/use-upload-queue"
 import { ContentSearchDialog } from "@/components/content-search-dialog"
 import { ViewerErrorBoundary } from "@/components/viewer-error-boundary"
 import { lazyWithRetry } from "@/lib/lazy-with-retry"
@@ -219,6 +222,17 @@ export function DashboardPage() {
     return await moveFolder(folderId, newParentId)
   }
 
+  const handleUpload = useCallback(
+    async (file: File, fId: string | null) => {
+      const result = await uploadFile(file, fId)
+      if (!result.error) await refetchAllFiles()
+      return result
+    },
+    [uploadFile, refetchAllFiles],
+  )
+
+  const { status: uploadStatus, enqueueUpload } = useUploadQueue(handleUpload)
+
   const handleUpdateFileContent: typeof updateFileContent = async (file, content, options) => {
     const result = await updateFileContent(file, content, options)
     if (result.error === null) {
@@ -339,11 +353,7 @@ export function DashboardPage() {
                 </>
               )
             )}
-            <UploadDialog folderId={selectedFolderId} onUpload={async (file, fId) => {
-              const result = await uploadFile(file, fId)
-              if (!result.error) await refetchAllFiles()
-              return result
-            }} />
+            <UploadDialog folderId={selectedFolderId} onFiles={enqueueUpload} />
           </div>
           <div ref={contentRef} className="relative flex-1 overflow-auto">
             {selectedFile ? (
@@ -392,6 +402,8 @@ export function DashboardPage() {
           </div>
         </main>
       </div>
+      <GlobalDropUpload folderId={selectedFolderId} onFiles={enqueueUpload} />
+      <UploadStatusBadge status={uploadStatus} />
       <ContentSearchDialog
         allFiles={allFiles}
         folders={folders}

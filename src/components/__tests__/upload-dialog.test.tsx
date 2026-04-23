@@ -5,12 +5,12 @@ import { UploadDialog } from "../upload-dialog"
 
 describe("UploadDialog", () => {
   it("renders an Upload trigger button", () => {
-    render(<UploadDialog folderId={null} onUpload={vi.fn()} />)
+    render(<UploadDialog folderId={null} onFiles={vi.fn()} />)
     expect(screen.getByRole("button", { name: /Upload/ })).toBeInTheDocument()
   })
 
   it("opens dialog content when trigger is clicked", async () => {
-    render(<UploadDialog folderId={null} onUpload={vi.fn()} />)
+    render(<UploadDialog folderId={null} onFiles={vi.fn()} />)
 
     await userEvent.click(screen.getByRole("button", { name: /Upload/ }))
 
@@ -18,12 +18,10 @@ describe("UploadDialog", () => {
     expect(screen.getByRole("button", { name: "Choose Files" })).toBeInTheDocument()
   })
 
-  it("calls onUpload with the selected file and shows status messages", async () => {
-    const onUpload = vi
-      .fn<(file: File, folderId: string | null) => Promise<{ error: string | null }>>()
-      .mockResolvedValue({ error: null })
+  it("calls onFiles with dropped files and the current folderId, then closes", async () => {
+    const onFiles = vi.fn()
 
-    render(<UploadDialog folderId="folder-xyz" onUpload={onUpload} />)
+    render(<UploadDialog folderId="folder-xyz" onFiles={onFiles} />)
 
     await userEvent.click(screen.getByRole("button", { name: /Upload/ }))
 
@@ -40,28 +38,14 @@ describe("UploadDialog", () => {
     dropzone.dispatchEvent(dropEvent)
 
     await waitFor(() => {
-      expect(onUpload).toHaveBeenCalledWith(file, "folder-xyz")
+      expect(onFiles).toHaveBeenCalledTimes(1)
     })
-  })
-
-  it("shows an error message when upload fails", async () => {
-    const onUpload = vi
-      .fn<(file: File, folderId: string | null) => Promise<{ error: string | null }>>()
-      .mockResolvedValue({ error: "Storage full" })
-
-    render(<UploadDialog folderId={null} onUpload={onUpload} />)
-    await userEvent.click(screen.getByRole("button", { name: /Upload/ }))
-
-    const dropzone = screen.getByText(/Drag & drop files here/).closest("div")!
-    const file = new File(["x"], "note.md")
-    const dropEvent = new Event("drop", { bubbles: true }) as unknown as DragEvent
-    Object.defineProperty(dropEvent, "dataTransfer", {
-      value: { files: [file] as unknown as FileList },
-    })
-    dropzone.dispatchEvent(dropEvent)
+    const [filesArg, folderArg] = onFiles.mock.calls[0]
+    expect(Array.from(filesArg as FileList)).toEqual([file])
+    expect(folderArg).toBe("folder-xyz")
 
     await waitFor(() => {
-      expect(screen.getByText("Storage full")).toBeInTheDocument()
+      expect(screen.queryByText("Upload Files")).not.toBeInTheDocument()
     })
   })
 })
