@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react"
+import { toast } from "sonner"
 import type { FileRecord } from "@/lib/types"
 
 export type TransferStatus =
@@ -11,7 +12,20 @@ type UploadFn = (file: File, folderId: string | null) => Promise<{ error: string
 type DownloadFn = (file: FileRecord) => Promise<{ blob: Blob | null; error: string | null }>
 
 const isPptx = (name: string) => /\.pptx?$/i.test(name)
+const isWord = (name: string) => /\.docx?$/i.test(name)
 const isWordOrText = (name: string) => /\.(docx?|txt)$/i.test(name)
+
+function notifyConversion(name: string) {
+  if (isPptx(name)) {
+    toast.info(`${name} は PDF に変換して保存されます`, {
+      description: "元の PowerPoint ファイルは保存されません",
+    })
+  } else if (isWord(name)) {
+    toast.info(`${name} は Markdown に変換して保存されます`, {
+      description: "元の Word ファイルは保存されません。書式（フォント・色・複雑な表など）は失われる可能性があります",
+    })
+  }
+}
 
 function saveBlobAs(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob)
@@ -47,6 +61,7 @@ export function useTransferQueue(uploadFn: UploadFn, downloadFn: DownloadFn) {
       busyRef.current = true
       try {
         for (const file of list) {
+          notifyConversion(file.name)
           const message = isPptx(file.name)
             ? `Converting ${file.name} to PDF...`
             : isWordOrText(file.name)
