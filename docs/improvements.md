@@ -15,7 +15,7 @@
 | ~~Error Boundaryがない~~ | ~~ビューアがクラッシュするとアプリ全体が白画面になる~~ | ✅ `ViewerErrorBoundary` 追加（ビューア単位でフォールバックUI、「Try again」で再試行） |
 | ~~バンドルサイズが大きい~~ | ~~メインチャンク 2.87MB。ビューアのコード分割（lazy import）が必要~~ | ✅ 2.87MB → 600KB（gzip 858KB → 177KB、約80%削減）。ビューアと変換処理を動的 import に変更 |
 | ~~Markdown XSS 対策~~ | ~~`react-markdown` は素の設定で `<script>` / `onerror` 等の悪意ある HTML を通しうる。将来の共有機能より前に `rehype-sanitize` を導入~~ | ✅ `rehype-sanitize` を導入し、GitHub の defaultSchema ＋ `wikilink://` プロトコルを許可する schema で運用。`urlTransform` で react-markdown 側のフィルタも整合。`<script>` / on\* ハンドラ / `javascript:` URL を検証するテスト追加 |
-| アップロードサイズの client-side 上限チェック | Supabase Storage の上限（プラン依存：50MB〜5GB）超過で汎用エラーになる。アップロード前に検知して分かりやすいエラーを出す | ⏳ 未着手 |
+| ~~アップロードサイズの client-side 上限チェック~~ | ~~Supabase Storage の上限（プラン依存：50MB〜5GB）超過で汎用エラーになる。アップロード前に検知して分かりやすいエラーを出す~~ | ✅ `useTransferQueue` で 50MB（Supabase 無料プラン上限）を超えるファイルを個別に sonner トーストで通知して rejected、残りの有効ファイルはそのままアップロード。ユニットテスト 3 件追加 |
 
 ### 中優先度
 

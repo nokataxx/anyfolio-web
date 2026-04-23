@@ -11,6 +11,18 @@ export type TransferStatus =
 type UploadFn = (file: File, folderId: string | null) => Promise<{ error: string | null }>
 type DownloadFn = (file: FileRecord) => Promise<{ blob: Blob | null; error: string | null }>
 
+// Supabase Storage's free-plan per-file limit. Pro / Team plans allow more,
+// but 50MB is a safe default that also prevents accidental huge uploads.
+export const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1024) return `${kb.toFixed(1)} KB`
+  const mb = kb / 1024
+  return `${mb.toFixed(1)} MB`
+}
+
 const isPptx = (name: string) => /\.pptx?$/i.test(name)
 const isWord = (name: string) => /\.docx?$/i.test(name)
 const isWordOrText = (name: string) => /\.(docx?|txt)$/i.test(name)
@@ -57,10 +69,24 @@ export function useTransferQueue(uploadFn: UploadFn, downloadFn: DownloadFn) {
       if (!list.length) return
       if (busyRef.current) return
 
+      // Reject oversized files upfront so users see all problems immediately
+      // and the remaining valid ones still get uploaded.
+      const valid: File[] = []
+      for (const file of list) {
+        if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+          toast.error(`${file.name} は大きすぎます`, {
+            description: `ファイルサイズ ${formatBytes(file.size)} がアップロード上限 ${formatBytes(MAX_UPLOAD_SIZE_BYTES)} を超えています`,
+          })
+        } else {
+          valid.push(file)
+        }
+      }
+      if (!valid.length) return
+
       clearStatusTimer()
       busyRef.current = true
       try {
-        for (const file of list) {
+        for (const file of valid) {
           notifyConversion(file.name)
           const message = isPptx(file.name)
             ? `Converting ${file.name} to PDF...`
@@ -77,7 +103,7 @@ export function useTransferQueue(uploadFn: UploadFn, downloadFn: DownloadFn) {
         }
         setStatus({
           kind: "success",
-          message: list.length === 1 ? "Uploaded 1 file" : `Uploaded ${list.length} files`,
+          message: valid.length === 1 ? "Uploaded 1 file" : `Uploaded ${valid.length} files`,
         })
         timerRef.current = window.setTimeout(() => setStatus(null), 3000)
       } finally {
