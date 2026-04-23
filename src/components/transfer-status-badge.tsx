@@ -1,7 +1,7 @@
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
-import type { UploadStatus } from "@/hooks/use-upload-queue"
+import type { TransferStatus } from "@/hooks/use-transfer-queue"
 
-export function UploadStatusBadge({ status }: { status: UploadStatus | null }) {
+export function TransferStatusBadge({ status }: { status: TransferStatus | null }) {
   if (!status) return null
   return (
     <div
@@ -11,7 +11,7 @@ export function UploadStatusBadge({ status }: { status: UploadStatus | null }) {
         status.kind === "error" ? "border-destructive" : ""
       }`}
     >
-      {status.kind === "uploading" && (
+      {(status.kind === "uploading" || status.kind === "downloading") && (
         <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
       )}
       {status.kind === "success" && (

@@ -54,6 +54,9 @@ export function Sidebar(props: SidebarProps) {
           onCreateFolder={async (name) => {
             await props.onCreateFolder(name, props.selectedFolderId)
           }}
+          onCreateFile={async (name) =>
+            await props.onCreateFile(name, props.selectedFolderId)
+          }
         />
         {!compact && (
           <SidebarSearch

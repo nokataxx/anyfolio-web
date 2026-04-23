@@ -26,6 +26,8 @@ export function FolderTree({
   onRenameFolder,
   onDeleteFile,
   onRenameFile,
+  onDownloadFile,
+  onCreateFile,
   onMoveFile,
   onMoveFolder,
   depth = 0,
@@ -127,6 +129,7 @@ export function FolderTree({
                     onSelectFile={onSelectFile}
                     onDeleteFile={onDeleteFile}
                     onRenameFile={onRenameFile}
+                    onDownloadFile={onDownloadFile}
                   />
                 ))}
                 <FolderTree
@@ -145,6 +148,8 @@ export function FolderTree({
                   onRenameFolder={onRenameFolder}
                   onDeleteFile={onDeleteFile}
                   onRenameFile={onRenameFile}
+                  onDownloadFile={onDownloadFile}
+                  onCreateFile={onCreateFile}
                   onMoveFile={onMoveFile}
                   onMoveFolder={onMoveFolder}
                   depth={depth + 1}
@@ -164,6 +169,7 @@ export function FolderTree({
           onSelectFile={onSelectFile}
           onDeleteFile={onDeleteFile}
           onRenameFile={onRenameFile}
+          onDownloadFile={onDownloadFile}
         />
       ))}
     </>

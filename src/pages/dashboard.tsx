@@ -1,11 +1,11 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { ArrowUp, Eye, Menu, Pencil, Save } from "lucide-react"
+import { ArrowUp, Download, Eye, Menu, Pencil, Save } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
-import { UploadDialog } from "@/components/upload-dialog"
+import { UploadButton } from "@/components/upload-button"
 import { GlobalDropUpload } from "@/components/global-drop-upload"
-import { UploadStatusBadge } from "@/components/upload-status-badge"
-import { useUploadQueue } from "@/hooks/use-upload-queue"
+import { TransferStatusBadge } from "@/components/transfer-status-badge"
+import { useTransferQueue } from "@/hooks/use-transfer-queue"
 import { ContentSearchDialog } from "@/components/content-search-dialog"
 import { ViewerErrorBoundary } from "@/components/viewer-error-boundary"
 import { lazyWithRetry } from "@/lib/lazy-with-retry"
@@ -104,6 +104,14 @@ export function DashboardPage() {
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  // After creating a new MD file, auto-enter edit mode once the viewer mounts
+  useEffect(() => {
+    if (pendingEditRef.current && markdownStatus.ready && markdownStatus.mode === "view") {
+      pendingEditRef.current = false
+      markdownViewerRef.current?.enterEdit()
+    }
+  }, [markdownStatus.ready, markdownStatus.mode])
+
   // Scroll to and highlight matching text after search navigation
   useEffect(() => {
     const pending = pendingHighlightRef.current
@@ -171,8 +179,10 @@ export function DashboardPage() {
   }, [highlightTrigger])
 
   const { folders, createFolder, deleteFolder, renameFolder, moveFolder } = useFolders()
-  const { files, uploadFile, deleteFile, renameFile, moveFile, updateFileContent } = useFiles(selectedFolderId)
+  const { files, uploadFile, createMarkdownFile, downloadFile, deleteFile, renameFile, moveFile, updateFileContent } = useFiles(selectedFolderId)
   const { allFiles, refetch: refetchAllFiles } = useAllFiles()
+
+  const pendingEditRef = useRef(false)
 
   const handleSelectFolder = (id: string | null) => {
     setSelectedFolderId(id)
@@ -222,6 +232,18 @@ export function DashboardPage() {
     return await moveFolder(folderId, newParentId)
   }
 
+  const handleCreateFile = async (name: string, folderId: string | null) => {
+    const result = await createMarkdownFile(name, folderId)
+    if (!result.error && result.file) {
+      await refetchAllFiles()
+      setPdfInitialPage(undefined)
+      setPdfHighlightQuery(undefined)
+      setSelectedFile(result.file)
+      pendingEditRef.current = true
+    }
+    return { error: result.error }
+  }
+
   const handleUpload = useCallback(
     async (file: File, fId: string | null) => {
       const result = await uploadFile(file, fId)
@@ -231,7 +253,8 @@ export function DashboardPage() {
     [uploadFile, refetchAllFiles],
   )
 
-  const { status: uploadStatus, enqueueUpload } = useUploadQueue(handleUpload)
+  const { status: transferStatus, enqueueUpload, downloadFile: queueDownload } =
+    useTransferQueue(handleUpload, downloadFile)
 
   const handleUpdateFileContent: typeof updateFileContent = async (file, content, options) => {
     const result = await updateFileContent(file, content, options)
@@ -262,6 +285,8 @@ export function DashboardPage() {
           onRenameFolder={renameFolder}
           onDeleteFile={handleDeleteFile}
           onRenameFile={handleRenameFile}
+          onDownloadFile={queueDownload}
+          onCreateFile={handleCreateFile}
           onMoveFile={handleMoveFile}
           onMoveFolder={handleMoveFolder}
           mobileOpen={mobileSidebarOpen}
@@ -353,7 +378,17 @@ export function DashboardPage() {
                 </>
               )
             )}
-            <UploadDialog folderId={selectedFolderId} onFiles={enqueueUpload} />
+            {selectedFile && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => queueDownload(selectedFile)}
+              >
+                <Download className="size-4" />
+                <span className="hidden sm:inline">Download</span>
+              </Button>
+            )}
+            <UploadButton folderId={selectedFolderId} onFiles={enqueueUpload} />
           </div>
           <div ref={contentRef} className="relative flex-1 overflow-auto">
             {selectedFile ? (
@@ -403,7 +438,7 @@ export function DashboardPage() {
         </main>
       </div>
       <GlobalDropUpload folderId={selectedFolderId} onFiles={enqueueUpload} />
-      <UploadStatusBadge status={uploadStatus} />
+      <TransferStatusBadge status={transferStatus} />
       <ContentSearchDialog
         allFiles={allFiles}
         folders={folders}

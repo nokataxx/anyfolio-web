@@ -140,6 +140,53 @@ export function useFiles(folderId: string | null) {
     return { error: null }
   }
 
+  const createMarkdownFile = async (name: string, folderId: string | null) => {
+    const trimmed = name.trim()
+    if (!trimmed) return { error: "Name cannot be empty", file: null }
+    if (/[\\/]/.test(trimmed)) return { error: "Name cannot contain / or \\", file: null }
+    const fileName = /\.md$/i.test(trimmed) ? trimmed : `${trimmed}.md`
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: "Not authenticated", file: null }
+
+    const storagePath = folderId
+      ? `${user.id}/${folderId}/${crypto.randomUUID()}.md`
+      : `${user.id}/root/${crypto.randomUUID()}.md`
+
+    const blob = new Blob([""], { type: "text/markdown" })
+    const { error: uploadError } = await supabase.storage
+      .from("anyfolio-files")
+      .upload(storagePath, blob)
+    if (uploadError) return { error: uploadError.message, file: null }
+
+    const { data, error: dbError } = await supabase
+      .from("anyfolio_files")
+      .insert({
+        user_id: user.id,
+        folder_id: folderId ?? null,
+        name: fileName,
+        type: "md",
+        storage_path: storagePath,
+        content_text: "",
+      })
+      .select()
+      .single()
+    if (dbError) return { error: dbError.message, file: null }
+
+    await fetchFiles()
+    return { error: null, file: data as FileRecord }
+  }
+
+  const downloadFile = async (fileRecord: FileRecord) => {
+    const { data, error } = await supabase.storage
+      .from("anyfolio-files")
+      .download(fileRecord.storage_path)
+    if (error) return { blob: null, error: error.message }
+    return { blob: data, error: null }
+  }
+
   const deleteFile = async (fileRecord: FileRecord) => {
     const { error: storageError } = await supabase.storage
       .from("anyfolio-files")
@@ -247,6 +294,8 @@ export function useFiles(folderId: string | null) {
     files,
     loading,
     uploadFile,
+    createMarkdownFile,
+    downloadFile,
     deleteFile,
     renameFile,
     moveFile,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { Download, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,8 +9,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { FileRecord } from "@/lib/types"
 import { fileIcon } from "./file-icon"
@@ -24,6 +30,7 @@ type FileItemProps = {
   onSelectFile: (file: FileRecord) => void
   onDeleteFile: (file: FileRecord) => Promise<{ error: string | null } | undefined>
   onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
+  onDownloadFile: (file: FileRecord) => void
 }
 
 export function FileItem({
@@ -34,9 +41,11 @@ export function FileItem({
   onSelectFile,
   onDeleteFile,
   onRenameFile,
+  onDownloadFile,
 }: FileItemProps) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(file.name)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -51,6 +60,11 @@ export function FileItem({
       await onRenameFile(file, editName.trim())
     }
     setEditing(false)
+  }
+
+  const startRename = () => {
+    setEditName(file.name)
+    setEditing(true)
   }
 
   const item = (
@@ -94,46 +108,55 @@ export function FileItem({
             </span>
           )}
           {!editing && (
-            <>
-              <button
-                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditName(file.name)
-                  setEditing(true)
-                }}
-              >
-                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
-              </button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete File</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete &quot;{file.name}&quot;? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={() => onDeleteFile(file)}
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="shrink-0 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="File actions"
+                >
+                  <MoreHorizontal className="size-4 text-muted-foreground hover:text-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onSelect={startRename}>
+                  <Pencil className="size-4" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onDownloadFile(file)}>
+                  <Download className="size-4" />
+                  Download
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete File</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete &quot;{file.name}&quot;? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => onDeleteFile(file)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </div>

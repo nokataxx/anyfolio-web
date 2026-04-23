@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import remarkBreaks from "remark-breaks"
 import rehypeSlug from "rehype-slug"
 import { toast } from "sonner"
 import {
@@ -243,7 +244,7 @@ export function MarkdownViewer({
   const preview = (
     <article className="prose prose-neutral dark:prose-invert max-w-none p-6">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkWikilink]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkWikilink]}
         rehypePlugins={[rehypeSlug]}
         components={{ a: renderLink }}
       >

@@ -10,10 +10,12 @@ export type SidebarProps = {
   onSelectFile: (file: FileRecord) => void
   onNavigateToFile: (file: FileRecord) => void
   onCreateFolder: (name: string, parentId: string | null) => Promise<{ error: string | null } | undefined>
+  onCreateFile: (name: string, folderId: string | null) => Promise<{ error: string | null } | undefined>
   onDeleteFolder: (id: string) => Promise<{ error: string | null } | undefined>
   onRenameFolder: (id: string, newName: string) => Promise<{ error: string | null } | undefined>
   onDeleteFile: (file: FileRecord) => Promise<{ error: string | null } | undefined>
   onRenameFile: (file: FileRecord, newName: string) => Promise<{ error: string | null } | undefined>
+  onDownloadFile: (file: FileRecord) => void
   onMoveFile: (fileId: string, newFolderId: string | null) => Promise<{ error: string | null } | undefined>
   onMoveFolder: (folderId: string, newParentId: string | null) => Promise<{ error: string | null } | undefined>
   /** Mobile-only: whether the sidebar overlay is open. Ignored on md+ viewports. */
