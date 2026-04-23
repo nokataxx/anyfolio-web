@@ -10,6 +10,10 @@ import type {
   MarkdownViewerHandle,
   MarkdownViewerStatus,
 } from "@/components/file-viewer/markdown-viewer"
+import type {
+  ExcelViewerHandle,
+  ExcelViewerStatus,
+} from "@/components/file-viewer/excel-viewer"
 
 // Viewers carry heavy deps (react-pdf, xlsx, jszip, etc.) — load on demand
 const MarkdownViewer = lazyWithRetry(() =>
@@ -56,6 +60,13 @@ export function DashboardPage() {
 
   const markdownViewerRef = useRef<MarkdownViewerHandle>(null)
   const [markdownStatus, setMarkdownStatus] = useState<MarkdownViewerStatus>({
+    mode: "view",
+    isDirty: false,
+    saving: false,
+    ready: false,
+  })
+  const excelViewerRef = useRef<ExcelViewerHandle>(null)
+  const [excelStatus, setExcelStatus] = useState<ExcelViewerStatus>({
     mode: "view",
     isDirty: false,
     saving: false,
@@ -293,6 +304,41 @@ export function DashboardPage() {
                 </>
               )
             )}
+            {selectedFile?.type === "xlsx" && (
+              excelStatus.mode === "view" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => excelViewerRef.current?.enterEdit()}
+                  disabled={!excelStatus.ready}
+                >
+                  <Pencil className="size-4" />
+                  <span className="hidden sm:inline">Edit</span>
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => excelViewerRef.current?.tryExitEdit()}
+                    disabled={excelStatus.saving}
+                  >
+                    <Eye className="size-4" />
+                    <span className="hidden sm:inline">View</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => excelViewerRef.current?.save()}
+                    disabled={!excelStatus.isDirty || excelStatus.saving}
+                  >
+                    <Save className="size-4" />
+                    <span className="hidden sm:inline">
+                      {excelStatus.saving ? "Saving..." : "Save"}
+                    </span>
+                  </Button>
+                </>
+              )
+            )}
             <UploadDialog folderId={selectedFolderId} onUpload={async (file, fId) => {
               const result = await uploadFile(file, fId)
               if (!result.error) await refetchAllFiles()
@@ -313,7 +359,12 @@ export function DashboardPage() {
                       onStatusChange={setMarkdownStatus}
                     />
                   ) : selectedFile.type === "xlsx" ? (
-                    <ExcelViewer file={selectedFile} />
+                    <ExcelViewer
+                      ref={excelViewerRef}
+                      file={selectedFile}
+                      onSaveContent={handleUpdateFileContent}
+                      onStatusChange={setExcelStatus}
+                    />
                   ) : selectedFile.type === "pptx" ? (
                     <PptxViewer file={selectedFile} />
                   ) : selectedFile.type === "image" ? (

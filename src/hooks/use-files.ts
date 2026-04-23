@@ -187,7 +187,7 @@ export function useFiles(folderId: string | null) {
 
   const updateFileContent = async (
     fileRecord: FileRecord,
-    content: string,
+    content: string | Blob,
     options: { expectedUpdatedAt: string; overwrite?: boolean },
   ): Promise<
     | { error: null; updatedAt: string }
@@ -209,12 +209,16 @@ export function useFiles(folderId: string | null) {
       }
     }
 
-    const blob = new Blob([content], { type: "text/markdown" })
+    const blob =
+      typeof content === "string"
+        ? new Blob([content], { type: "text/markdown" })
+        : content
+    const contentType = typeof content === "string" ? "text/markdown" : blob.type || "application/octet-stream"
     const { error: uploadError } = await supabase.storage
       .from("anyfolio-files")
       .upload(fileRecord.storage_path, blob, {
         upsert: true,
-        contentType: "text/markdown",
+        contentType,
       })
     if (uploadError) return { error: uploadError.message }
 
