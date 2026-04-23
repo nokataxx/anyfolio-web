@@ -1,29 +1,30 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { ArrowUp, Eye, Menu, Pencil, Save } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
 import { UploadDialog } from "@/components/upload-dialog"
 import { ContentSearchDialog } from "@/components/content-search-dialog"
 import { ViewerErrorBoundary } from "@/components/viewer-error-boundary"
+import { lazyWithRetry } from "@/lib/lazy-with-retry"
 import type {
   MarkdownViewerHandle,
   MarkdownViewerStatus,
 } from "@/components/file-viewer/markdown-viewer"
 
 // Viewers carry heavy deps (react-pdf, xlsx, jszip, etc.) — load on demand
-const MarkdownViewer = lazy(() =>
+const MarkdownViewer = lazyWithRetry(() =>
   import("@/components/file-viewer/markdown-viewer").then((m) => ({ default: m.MarkdownViewer })),
 )
-const PdfViewer = lazy(() =>
+const PdfViewer = lazyWithRetry(() =>
   import("@/components/file-viewer/pdf-viewer").then((m) => ({ default: m.PdfViewer })),
 )
-const ExcelViewer = lazy(() =>
+const ExcelViewer = lazyWithRetry(() =>
   import("@/components/file-viewer/excel-viewer").then((m) => ({ default: m.ExcelViewer })),
 )
-const PptxViewer = lazy(() =>
+const PptxViewer = lazyWithRetry(() =>
   import("@/components/file-viewer/pptx-viewer").then((m) => ({ default: m.PptxViewer })),
 )
-const ImageViewer = lazy(() =>
+const ImageViewer = lazyWithRetry(() =>
   import("@/components/file-viewer/image-viewer").then((m) => ({ default: m.ImageViewer })),
 )
 
